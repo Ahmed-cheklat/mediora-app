@@ -300,14 +300,14 @@ class AuthService {
           await prefs.setString('refresh_token', refreshTokenHeader);
           print('refresh token from sign up : $refreshTokenHeader');
         }
-         final String? deviceIdCookie = _extractCookieValue(
-            response.headers['set-cookie'] ?? '',
-            'device_id',
-          );
-          if (deviceIdCookie != null){
-             await prefs.setString('device_id', deviceIdCookie);
-          }
-                     
+        final String? deviceIdCookie = _extractCookieValue(
+          response.headers['set-cookie'] ?? '',
+          'device_id',
+        );
+        if (deviceIdCookie != null) {
+          await prefs.setString('device_id', deviceIdCookie);
+        }
+
         if (data['exists'] == true) {
           return AuthResult(success: false, message: "Successfully siging up");
         }
@@ -316,7 +316,6 @@ class AuthService {
 
       if (response.statusCode != 200 && response.statusCode != 500) {
         print('Error : ----------------------------: ${response.statusCode}');
-        print("Error : --------------------------------- : " + response.body);
         return AuthResult(success: false, message: "Something went wrong");
       }
       if (response.statusCode == 500) {
@@ -342,6 +341,8 @@ class AuthService {
       //final String deviceId = await DeviceManager.getDeviceId();
       final String? refreshToken = prefs.getString('refresh_token');
       final String? deviceId = prefs.getString('device_id');
+      print('SignOut - deviceId: $deviceId');
+      print('SignOut - refreshToken: $refreshToken');
       final response = await http.delete(
         Uri.parse('$_baseUrl/auth/signout'),
         headers: {
@@ -350,18 +351,17 @@ class AuthService {
           if (refreshToken != null) 'Authorization': 'Bearer $refreshToken',
         },
       );
-
+      print('SignOut status: ${response.statusCode}');
+      print('SignOut body: ${response.body}');
       if (response.statusCode == 200 || response.statusCode == 204) {
         await prefs.remove('access_token');
         await prefs.remove('refresh_token');
-        await DeviceManager.clearDeviceId();
 
         return AuthResult(success: true, message: "Signed out successfully");
       }
       if (response.statusCode == 401) {
         await prefs.remove('access_token');
         await prefs.remove('refresh_token');
-        await DeviceManager.clearDeviceId();
         return AuthResult(success: false, message: "Already signed out");
       }
       if (response.statusCode == 500) {
@@ -559,6 +559,92 @@ class AuthService {
       return AuthResult(success: false, message: "Something went wrong");
     } catch (e) {
       print('Network Error during Update Password: $e');
+      return AuthResult(success: false, message: "No internet connection");
+    }
+  }
+
+  //-------------------------
+  Future<AuthResult> changePassword(
+    String currentPassword,
+    String newPassword,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? accessToken = prefs.getString('access_token');
+      final String? deviceId = prefs.getString('device_id');
+      // 1. Check if the user is actually logged in
+      if (accessToken == null) {
+        return AuthResult(
+          success: false,
+          message: "Session expired, please sign in again.",
+        );
+      }
+
+      // 2. Make the request to the backend
+      // Note: Verify with your backend developer if this should be a PATCH or POST request,
+      // and confirm the exact endpoint URL ('/auth/change-password').
+      final response = await http.patch(
+        Uri.parse('$_baseUrl/auth/change-password'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+          if (deviceId != null) 'Cookie': 'device_id=$deviceId',
+          //'x-device-id': deviceId!,
+        },
+        body: jsonEncode({
+          'password': newPassword,
+          'current_password': currentPassword,
+        }),
+      );
+
+      // 3. Handle the responses
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        if (response.body.isNotEmpty) {
+          final data = jsonDecode(response.body);
+          print('---------------------------- $data');
+          if (data['token'] != null) {
+            await prefs.setString('access_token', data['token']);
+          }
+        }
+
+        final String? newAccessToken = response.headers['access_token'];
+        final String? newRefreshToken = response.headers['refresh_token'];
+        
+        if (newAccessToken != null) {
+          await prefs.setString('access_token', newAccessToken);
+        }
+        if (newRefreshToken != null) {
+          await prefs.setString('refresh_token', newRefreshToken);
+          print('New refresh token saved after password change: $newRefreshToken');
+        }
+
+
+        return AuthResult(
+          success: true,
+          message: "Password changed successfully",
+        );
+      }
+
+      if (response.statusCode == 400 || response.statusCode == 401) {
+        return AuthResult(
+          success: false,
+          message: "Incorrect current password",
+        );
+      }
+
+      if (response.statusCode == 500) {
+        return AuthResult(
+          success: false,
+          message: "Server error, try again later",
+        );
+      }
+
+      // Catch-all for unexpected status codes
+      print('ChangePassword Failed: ${response.statusCode}');
+      print('Response body: ${response.body}');
+      return AuthResult(success: false, message: "Something went wrong");
+    } catch (e) {
+      print('Network Error during Change Password: $e');
       return AuthResult(success: false, message: "No internet connection");
     }
   }

@@ -292,6 +292,14 @@ class _CurrentPasswordFieldState extends State<CurrentPasswordField> {
       controller: widget.controller,
       focusNode: _focusNode,
       obscureText: _obscureText,
+      // --- ADDED VALIDATOR HERE ---
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return 'Please enter your current password';
+        }
+        return null; // Returning null means the input is valid
+      },
+      // ----------------------------
       style: TextStyle(fontFamily: 'LineSeedJP', fontSize: 14.sp),
       decoration: InputDecoration(
         hintText: 'Enter your current password',
