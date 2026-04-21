@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mediora/Network/networkServices.dart';
 import 'package:mediora/block_1/tools/advice_card.dart';
 import 'package:mediora/block_1/tools/appointement_card.dart';
@@ -9,8 +10,6 @@ import 'package:mediora/block_4/pages/posts_page.dart';
 import 'package:mediora/block_5/pages/edit_profile_page.dart';
 import 'package:mediora/block_5/pages/profile_page.dart';
 
-
-
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
 
@@ -19,65 +18,105 @@ class Homepage extends StatefulWidget {
 }
 
 class _HomepageState extends State<Homepage> {
-   Map<String, dynamic>? _userInfo;
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+
+  String _userName = '...';
+  String? _pictureUrl;
+
+  final List<Widget> _pages = [
+    const HomepageBody(),
+    const AppointmentPage(),
+    const ConsultPage(),
+    const PostsPage(),
+    const ProfilePage(),
+  ];
+
+  int _currentIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    _loadUser();
+    _initUser();
   }
 
-  Future<void> _loadUser() async {
-    final data = await UserServices().getUser(); // your api service instance
-    if (mounted) setState(() => _userInfo = data);
+  // Step 1: fetch from API, save to secure storage, then read and display
+  Future<void> _initUser() async {
+    final data = await UserServices().getUser();
+    if (data != null) {
+      await _saveUser(data);
+    }
+    await _readUser();
   }
 
+  Future<void> _saveUser(Map<String, dynamic> data) async {
+    await _secureStorage.write(
+      key: 'first_name',
+      value: data['first_name']?.toString() ?? '',
+    );
+    await _secureStorage.write(
+      key: 'last_name',
+      value: data['last_name']?.toString() ?? '',
+    );
+    await _secureStorage.write(
+      key: 'picture',
+      value: data['picture']?.toString() ?? '',
+    );
+    await _secureStorage.write(
+      key: 'username',
+      value: data['username']?.toString() ?? '',
+    );
+    await _secureStorage.write(
+      key: 'email',
+      value: data['email']?.toString() ?? '',
+    );
+    await _secureStorage.write(
+      key: 'gender',
+      value: data['gender']?.toString() ?? '',
+    );
+    await _secureStorage.write(
+      key: 'phone_number',
+      value: data['phone_number']?.toString() ?? '',
+    );
+  }
 
+  Future<void> _readUser() async {
+    final firstName = await _secureStorage.read(key: 'first_name') ?? '';
+    final lastName = await _secureStorage.read(key: 'last_name') ?? '';
+    final picture = await _secureStorage.read(key: 'picture');
 
-
-  final List<Widget> _pages = [
-    HomepageBody(),
-    AppointmentPage(),
-    ConsultPage(),
-    PostsPage(),
-    ProfilePage(),
-  ];
-  // ignore: non_constant_identifier_names
-  int _current_index = 0;
-  //function of greeting using time
-  String getGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour >= 5 && hour < 12) {
-      return 'Good Morning,';
-    } else if (hour >= 12 && hour < 17) {
-      return 'Good Afternoon,';
-    } else if (hour >= 17 && hour < 21) {
-      return 'Good Evening,';
-    } else {
-      return 'Good Night,';
+    if (mounted) {
+      setState(() {
+        _userName = '$firstName $lastName'.trim();
+        _pictureUrl =
+            (picture != null &&
+                picture.startsWith('http') &&
+                picture != 'string')
+            ? picture
+            : null;
+      });
     }
   }
 
-
-
-
+  String getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour >= 5 && hour < 12) return 'Good Morning,';
+    if (hour >= 12 && hour < 17) return 'Good Afternoon,';
+    if (hour >= 17 && hour < 21) return 'Good Evening,';
+    return 'Good Night,';
+  }
 
   @override
   Widget build(BuildContext context) {
     final greeting = getGreeting();
-    final userName = _userInfo != null
-        ? '${_userInfo!['first_name'] ?? ''} ${_userInfo!['last_name'] ?? ''}'.trim()
-        : '...';
 
     return PopScope(
       canPop: false,
       child: Scaffold(
         extendBody: true,
-        //Greeting with the name of the user
-        appBar: _current_index == 0
+        appBar: _currentIndex == 0
             ? AppBar(
                 toolbarHeight: 60.h,
-                elevation: 0, // remove default shadow
+                elevation: 0,
                 flexibleSpace: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 36, 16, 8),
                   child: Column(
@@ -87,12 +126,12 @@ class _HomepageState extends State<Homepage> {
                       Text(
                         greeting,
                         style: TextStyle(
-                          color: Color.fromARGB(255, 115, 111, 111),
+                          color: const Color.fromARGB(255, 115, 111, 111),
                           fontSize: 15.sp,
                         ),
                       ),
                       Text(
-                        userName,
+                        _userName,
                         style: TextStyle(
                           fontSize: 18.sp,
                           fontWeight: FontWeight.w700,
@@ -102,48 +141,40 @@ class _HomepageState extends State<Homepage> {
                   ),
                 ),
                 actions: [
-                  // the icon which can move user to the edit profile page
                   Padding(
                     padding: EdgeInsets.only(right: 16.w),
                     child: GestureDetector(
-                      onTap: () => Navigator.push(context, 
-                      MaterialPageRoute(builder: (context) => EditProfilePage())),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => EditProfilePage()),
+                      ),
                       child: CircleAvatar(
                         radius: 22.r,
-                        // ignore: deprecated_member_use
-                        //backgroundColor: Color(0xFF2463EB).withOpacity(0.2),
-                        backgroundImage: AssetImage('assets/default_avatar.png'),
+                        backgroundImage: _pictureUrl != null
+                            ? NetworkImage(_pictureUrl!) as ImageProvider
+                            : const AssetImage('assets/default_avatar.png'),
                       ),
                     ),
                   ),
                 ],
-
                 bottom: PreferredSize(
                   preferredSize: const Size.fromHeight(1),
-                  child: Container(
-                    color: Colors.grey[300], // color of the dividing line
-                    height: 1,
-                  ),
+                  child: Container(color: Colors.grey[300], height: 1),
                 ),
               )
             : null,
-
-        body: _pages[_current_index],
-
+        body: _pages[_currentIndex],
         bottomNavigationBar: BottomNavigatorBarNewCustom(
-          currentIndex: _current_index,
-          onTap: (index) {
-            setState(() {
-              _current_index = index;
-            });
-          },
+          currentIndex: _currentIndex,
+          onTap: (index) => setState(() => _currentIndex = index),
         ),
       ),
     );
   }
 }
 
-//bottom navigator bar edetting
+// ── HomepageBody ──────────────────────────────────────────────────────────────
+
 class HomepageBody extends StatelessWidget {
   const HomepageBody({super.key});
 
@@ -151,57 +182,11 @@ class HomepageBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return appointments.isEmpty
         ? const Center(child: Text("Nothing to show"))
-        : ListView(
-            padding: EdgeInsets.only(top: 8.h),
-            children: [
-              // Title of booked appointments
-              Padding(
-                padding: EdgeInsets.only(left: 12.0.w, bottom: 8.h),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    const Icon(
-                      Icons.calendar_month_rounded,
-                      color: Color(0xFF2463EB),
-                    ),
-                    5.horizontalSpace,
-                    Text(
-                      'Your Booked Appointments',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 17.sp,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // All appointment cards
-              ...appointments.map(
-                (appointment) => AppointementCard(appointment: appointment),
-              ),
-
-              // Extra card under appointments
-              Padding(
-                padding: EdgeInsets.only(left: 20.0.w, top: 12.h),
-                child: Align(
-                  alignment: Alignment.topLeft,
-                  child: Text(
-                    "Health Tips for Today",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 17.sp,
-                    ),
-                  ),
-                ),
-              ),
-
-              // Card of health tips advice
-              const HealthTips(),
-            ],
-          );
+        : Container();
   }
 }
+
+// ── BottomNavigationBar ───────────────────────────────────────────────────────
 
 class BottomNavigatorBarNewCustom extends StatefulWidget {
   final int currentIndex;
@@ -230,9 +215,7 @@ class _BottomNavigatorBarNewCustomState
       decoration: BoxDecoration(
         boxShadow: [
           BoxShadow(
-            color: isDark
-                ? Colors.black45
-                : Colors.black26, // 👈 shadow adapts to theme
+            color: isDark ? Colors.black45 : Colors.black26,
             blurRadius: 30,
             offset: const Offset(0, 10),
           ),
@@ -241,21 +224,18 @@ class _BottomNavigatorBarNewCustomState
       child: ClipRRect(
         borderRadius: BorderRadius.circular(25),
         child: MediaQuery(
-          data: MediaQuery.of(context).copyWith(
-            padding: EdgeInsets.zero, // 👈 removes internal padding
-          ),
+          data: MediaQuery.of(context).copyWith(padding: EdgeInsets.zero),
           child: SizedBox(
             height: 68,
             child: OverflowBox(
-              maxHeight: 68, // 👈 prevents overflow
+              maxHeight: 68,
               child: BottomNavigationBar(
                 backgroundColor: isDark
-                    ? const Color(0xFF1E1E1E) // 👈 your dark color
-                    : Colors.white, // 👈 your light color
+                    ? const Color(0xFF1E1E1E)
+                    : Colors.white,
                 selectedFontSize: 10,
                 unselectedFontSize: 10,
                 currentIndex: widget.currentIndex,
-                //type: BottomNavigationBarType.fixed,
                 selectedItemColor: const Color(0xFF2463EB),
                 unselectedItemColor: Colors.grey,
                 enableFeedback: false,

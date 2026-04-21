@@ -745,8 +745,31 @@ class AppointementService {
     return null;
   }
 }
+
+  //------------------------
+  //Make an Appointement
+  
 }
 //---------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 class UserServices {
   static const String _baseUrl = 'https://mediora-back-2.onrender.com';

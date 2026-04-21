@@ -63,6 +63,11 @@ class _DoctorsInSpecialityState extends State<DoctorsInSpeciality> {
     });
   }
 
+  String _cleanString(dynamic value) {
+    if (value == null || value == 'null') return '';
+    return value.toString();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -93,7 +98,6 @@ class _DoctorsInSpecialityState extends State<DoctorsInSpeciality> {
                     controller: _scrollController,
                     itemCount: _doctors.length + (_hasMore ? 1 : 0),
                     itemBuilder: (context, index) {
-                      // Last item → loading indicator
                       if (index == _doctors.length) {
                         return const Padding(
                           padding: EdgeInsets.symmetric(vertical: 24),
@@ -102,27 +106,36 @@ class _DoctorsInSpecialityState extends State<DoctorsInSpeciality> {
                       }
 
                       final doctor = _doctors[index];
-                      return DoctorCard(
-                        fullName:
-                            'Dr. ${doctor['first_name']} ${doctor['last_name']}',
-                        specialty: doctor['speciality'] ?? '',
-                        networkImage: doctor['picture'],
 
+                      // Build full name skipping 'null'
+                      final firstName = _cleanString(doctor['first_name']);
+                      final lastName = _cleanString(doctor['last_name']);
+                      String fullName = 'Dr. $firstName $lastName'.trim();
+                      if (fullName == 'Dr.') fullName = 'Dr.';
+
+                      final specialty = _cleanString(doctor['speciality']);
+                      final networkImage = _cleanString(doctor['picture']);
+                      final validNetworkImage = networkImage.isNotEmpty ? networkImage : null;
+
+                      return DoctorCard(
+                        fullName: fullName,
+                        specialty: specialty,
+                        networkImage: validNetworkImage,
                         onTap: () async {
                           if (_isNavigating) return;
                           _isNavigating = true;
                           final fullDoctor = await AppointementService().getDoctor(
                             id: doctor['id'].toString(),
                           );
-                          if (fullDoctor != null && context.mounted){
+                          if (fullDoctor != null && context.mounted) {
                             Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => DoctorPage(doctor: fullDoctor),
-                            ),
-                          );
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => DoctorPage(doctor: fullDoctor),
+                              ),
+                            );
                           }
-                          
+                          _isNavigating = false;
                         },
                       );
                     },
@@ -209,7 +222,7 @@ class _SearchForDoctorInSpecialityState
           borderSide: const BorderSide(color: Color(0xFF2463EB), width: 1.5),
         ),
       ),
-      onChanged: (_) => setState(() {}), // to update suffixIcon visibility
+      onChanged: (_) => setState(() {}),
     );
   }
 }

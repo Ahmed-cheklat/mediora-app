@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:mediora/block_0/pages/sign_up/set_a_password_for_sign_up.dart';
+import 'package:mediora/block_0/pages/signin_with_hellopage/sign_in.dart';
 import 'package:mediora/block_2/pages/invoice_page.dart';
 import 'package:mediora/Network/networkServices.dart';
 
@@ -41,6 +43,53 @@ class _BookAndPayPageState extends State<BookAndPayPage> {
   }
 
   Future<void> _onConfirm() async {
+    final days = _next7Days;
+    final selectedDate = days[_selectedDayIndex];
+
+    // Validate fields
+    if (_nameController.text.trim().isEmpty ||
+        _cardNumberController.text.trim().isEmpty ||
+        _expiryController.text.trim().isEmpty ||
+        _cvvController.text.trim().isEmpty) {
+      CustomSnackBarForSignIn.show(
+        context,
+        message: 'Please fill in all payment details',
+        icon: Icons.error_outline,
+        backgroundColor: Colors.red,
+      );
+      return;
+    }
+
+    if (_cardNumberController.text.replaceAll(' ', '').length < 16) {
+      CustomSnackBarForSignUp.show(
+        context,
+        message: 'Please enter a valid card number',
+        icon: Icons.credit_card,
+        backgroundColor: Colors.red,
+      );
+      return;
+    }
+
+    if (_expiryController.text.length < 5) {
+      CustomSnackBarForSignUp.show(
+        context,
+        message: 'Please enter a valid expiry date (MM/YY)',
+        icon: Icons.calendar_today_outlined,
+        backgroundColor: Colors.red,
+      );
+      return;
+    }
+
+    if (_cvvController.text.length < 3) {
+      CustomSnackBarForSignUp.show(
+        context,
+        message: 'Please enter a valid CVV',
+        icon: Icons.lock_outline,
+        backgroundColor: Colors.red,
+      );
+      return;
+    }
+
     setState(() => _isConfirming = true);
     try {
       final user = await UserServices().getUser();
@@ -51,13 +100,17 @@ class _BookAndPayPageState extends State<BookAndPayPage> {
           builder: (context) => InvoicePage(
             doctor: widget.doctor,
             patient: user,
+            selectedDate: selectedDate,
           ),
         ),
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load user data: $e')),
+      CustomSnackBarForSignUp.show(
+        context,
+        message: 'Failed to load user data: $e',
+        icon: Icons.error_outline,
+        backgroundColor: Colors.red,
       );
     } finally {
       if (mounted) setState(() => _isConfirming = false);
@@ -117,8 +170,7 @@ class _BookAndPayPageState extends State<BookAndPayPage> {
               ),
               subtitle: Text(
                 doctor['specialty'] ?? '',
-                style:
-                    TextStyle(fontSize: 12.sp, color: const Color(0xFF2463EB)),
+                style: TextStyle(fontSize: 12.sp, color: const Color(0xFF2463EB)),
               ),
             ),
           ),
@@ -167,8 +219,7 @@ class _BookAndPayPageState extends State<BookAndPayPage> {
                       boxShadow: isSelected
                           ? [
                               BoxShadow(
-                                color:
-                                    const Color(0xFF2463EB).withOpacity(0.3),
+                                color: const Color(0xFF2463EB).withOpacity(0.3),
                                 blurRadius: 8,
                                 offset: const Offset(0, 3),
                               )
@@ -206,8 +257,7 @@ class _BookAndPayPageState extends State<BookAndPayPage> {
                         if (isDayOff)
                           Text(
                             'Off',
-                            style:
-                                TextStyle(fontSize: 9.sp, color: Colors.grey),
+                            style: TextStyle(fontSize: 9.sp, color: Colors.grey),
                           ),
                       ],
                     ),
@@ -248,8 +298,7 @@ class _BookAndPayPageState extends State<BookAndPayPage> {
               if (formatted != val) {
                 _cardNumberController.value = TextEditingValue(
                   text: formatted,
-                  selection:
-                      TextSelection.collapsed(offset: formatted.length),
+                  selection: TextSelection.collapsed(offset: formatted.length),
                 );
               }
             },
@@ -271,8 +320,8 @@ class _BookAndPayPageState extends State<BookAndPayPage> {
                           '${digits.substring(0, 2)}/${digits.substring(2)}';
                       _expiryController.value = TextEditingValue(
                         text: formatted,
-                        selection: TextSelection.collapsed(
-                            offset: formatted.length),
+                        selection:
+                            TextSelection.collapsed(offset: formatted.length),
                       );
                     }
                   },
@@ -343,7 +392,8 @@ class _BookAndPayPageState extends State<BookAndPayPage> {
   }
 }
 
-// _PaymentField unchanged
+// ── _PaymentField ─────────────────────────────────────────────────────────────
+
 class _PaymentField extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
@@ -380,8 +430,7 @@ class _PaymentField extends StatelessWidget {
         hintStyle: const TextStyle(color: Colors.grey),
         prefixIcon: Icon(icon, color: const Color(0xFF2463EB), size: 20),
         filled: true,
-        fillColor:
-            isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF3F4F6),
+        fillColor: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF3F4F6),
         contentPadding: const EdgeInsets.symmetric(vertical: 18),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -389,8 +438,7 @@ class _PaymentField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide:
-              const BorderSide(color: Color(0xFF2463EB), width: 1.5),
+          borderSide: const BorderSide(color: Color(0xFF2463EB), width: 1.5),
         ),
       ),
     );

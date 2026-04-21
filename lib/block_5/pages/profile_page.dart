@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mediora/Network/networkServices.dart';
 import 'package:mediora/block_0/pages/signin_with_hellopage/policies.dart';
 import 'package:mediora/block_0/pages/signin_with_hellopage/sign_in.dart';
@@ -12,14 +13,7 @@ import 'package:mediora/block_5/tools/themeProvider.dart';
 import 'package:provider/provider.dart';
 
 //an example of user information
-final Map<String, dynamic> userInfo = {
-  "first_name": "Yacine",
-  "last_name": "Boumediene",
-  "username": "@yacine_bmd",
-  "phone_number": "+213 555 123 456",
-  "email": "yacine.boumediene@gmail.com",
-  "gender": "Male",
-};
+
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -30,18 +24,33 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
 
-  Map<String, dynamic>? _userInfo;
+  final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+  String _firstName = '';
+  String _lastName = '';
+  String _email = '';
 
-    @override
-    void initState() {
-      super.initState();
-      _loadUser();
+
+   @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    // Read each field individually from secure storage
+    final firstName = await _secureStorage.read(key: 'first_name') ?? '';
+    final lastName  = await _secureStorage.read(key: 'last_name')  ?? '';
+    final email     = await _secureStorage.read(key: 'email')      ?? '';
+
+    if (mounted) {
+      setState(() {
+        _firstName = firstName;
+        _lastName = lastName;
+        _email = email;
+      });
     }
-
-    Future<void> _loadUser() async {
-      final data = await UserServices().getUser(); // your api service instance
-      if (mounted) setState(() => _userInfo = data);
-    }
+  }
+  
 
 
 
@@ -53,7 +62,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
 
 
-  @override
+
+
+
+@override
   Widget build(BuildContext context) {
     // at the top of build method
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -78,8 +90,8 @@ class _ProfilePageState extends State<ProfilePage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      _userInfo?['first_name'] ?? '   ',
-              
+                      _firstName ,
+
                       //userInfo["first_name"],
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
@@ -88,7 +100,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     5.horizontalSpace,
                     Text(
-                      _userInfo?["last_name"] ?? '  ',
+                      _lastName,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 15.sp,
@@ -99,7 +111,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
                 //user's email
                 Text(
-                   _userInfo?['email'] ?? '   ',
+                  _email,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 12.sp,

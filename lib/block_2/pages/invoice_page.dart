@@ -7,7 +7,7 @@ class InvoicePage extends StatelessWidget {
   final Map<String, dynamic> doctor;
   final Map<String, dynamic> patient;
 
-  const InvoicePage({super.key, required this.doctor, required this.patient});
+  const InvoicePage({super.key, required this.doctor, required this.patient, required DateTime selectedDate});
 
   @override
   Widget build(BuildContext context) {
