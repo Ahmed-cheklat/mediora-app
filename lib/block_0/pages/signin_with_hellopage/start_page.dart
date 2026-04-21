@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:mediora/block_0/pages/signin_with_hellopage/policies.dart';
 import 'package:mediora/block_0/pages/signin_with_hellopage/sign_in.dart';
+import 'package:mediora/block_1/pages%20/homePage.dart';
 
 class StartPage extends StatelessWidget {
   const StartPage({super.key});

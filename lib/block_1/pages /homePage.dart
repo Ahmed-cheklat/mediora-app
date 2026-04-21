@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:mediora/Network/networkServices.dart';
 import 'package:mediora/block_1/tools/advice_card.dart';
 import 'package:mediora/block_1/tools/appointement_card.dart';
-import 'package:mediora/block_2/pages/appointment_page.dart';
+import 'package:mediora/block_2/pages/specialites_page.dart';
 import 'package:mediora/block_3/pages/consult_page.dart';
 import 'package:mediora/block_4/pages/posts_page.dart';
 import 'package:mediora/block_5/pages/edit_profile_page.dart';
 import 'package:mediora/block_5/pages/profile_page.dart';
 
-final List<Map<String, dynamic>> users = [
-  {"name": "John Smith"},
-];
+
 
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
@@ -20,6 +19,22 @@ class Homepage extends StatefulWidget {
 }
 
 class _HomepageState extends State<Homepage> {
+   Map<String, dynamic>? _userInfo;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUser();
+  }
+
+  Future<void> _loadUser() async {
+    final data = await UserServices().getUser(); // your api service instance
+    if (mounted) setState(() => _userInfo = data);
+  }
+
+
+
+
   final List<Widget> _pages = [
     HomepageBody(),
     AppointmentPage(),
@@ -43,10 +58,16 @@ class _HomepageState extends State<Homepage> {
     }
   }
 
+
+
+
+
   @override
   Widget build(BuildContext context) {
     final greeting = getGreeting();
-    final userName = users[0]["name"];
+    final userName = _userInfo != null
+        ? '${_userInfo!['first_name'] ?? ''} ${_userInfo!['last_name'] ?? ''}'.trim()
+        : '...';
 
     return PopScope(
       canPop: false,

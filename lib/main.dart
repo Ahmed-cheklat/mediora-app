@@ -34,15 +34,52 @@ class MyApp extends StatelessWidget {
         builder: (context, themeProvider, child) => MaterialApp(
           themeMode: themeProvider.themeMode,
           theme: ThemeData(
+            
             brightness: Brightness.light,
             fontFamily: 'LineSeedJP',
             scaffoldBackgroundColor: const Color(0xFFF2F2F7),
-            appBarTheme: AppBarTheme(backgroundColor: const Color(0xFFF2F2F7)),
+            appBarTheme: AppBarTheme(
+              backgroundColor: const Color(0xFFF2F2F7),
+               foregroundColor: Colors.black,
+               elevation: 0,
+               scrolledUnderElevation: 0,
+              ),
+            cardTheme: CardThemeData(
+            color: Colors.white,  // ← was Color(0xFF1E1E1E), wrong
+            elevation: 0,
+            
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+            iconTheme: const IconThemeData(color: Color(0xFF2463EB)),
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF2463EB),
+              surface: Color(0xFFF2F2F7),
+            ),
           ),
           darkTheme: ThemeData(
             brightness: Brightness.dark,
             fontFamily: 'LineSeedJP',
             scaffoldBackgroundColor: Color(0xFF121212),
+            appBarTheme: const AppBarTheme(
+              backgroundColor: Color(0xFF121212),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+            ),
+            cardTheme: CardThemeData(
+              color: Color(0xFF1E1E1E),  // ← correct
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            iconTheme: const IconThemeData(color: Color(0xFF2463EB)),
+            colorScheme: const ColorScheme.dark(
+              primary: Color(0xFF2463EB),
+              surface: const Color(0xFF1E1E1E),
+            ),
           ),
           debugShowCheckedModeBanner: false,
 

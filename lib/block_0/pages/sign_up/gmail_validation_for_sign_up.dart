@@ -7,8 +7,8 @@ import 'package:mediora/block_0/pages/sign_up/set_a_password_for_sign_up.dart';
 import 'package:mediora/block_0/pages/sign_up/user_information.dart';
 
 class GmailValidation extends StatefulWidget {
-  final String email; 
-  const GmailValidation({super.key,required this.email});
+  final String email;
+  const GmailValidation({super.key, required this.email});
 
   @override
   State<GmailValidation> createState() => _GmailValidationState();
@@ -16,8 +16,8 @@ class GmailValidation extends StatefulWidget {
 
 class _GmailValidationState extends State<GmailValidation> {
   String otpCode = "";
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>(); 
-  bool _isLoading = false; 
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -70,39 +70,57 @@ class _GmailValidationState extends State<GmailValidation> {
                       child: Divider(color: Colors.grey, thickness: 1.h),
                     ),
                     15.verticalSpace,
-                    ResendCodeTimerForSignUp(),
+                    ResendCodeTimerForSignUp(email: widget.email, otp: otpCode),
                     25.verticalSpace,
                     ButtonOfGmailValidation(
-                      function:() async {
-                        if (!_formKey.currentState!.validate()) return; 
+                      function: () async {
+                         if (otpCode.length < 7) {
+                        CustomSnackBarForSignUp.show(
+                          context,
+                          message: 'Please enter the complete 6-digit code',
+                          icon: Icons.error,
+                          backgroundColor: Colors.red,
+                        );
+                        return;
+    }
+                        if (!_formKey.currentState!.validate()) return;
                         setState(() {
-                          _isLoading = true; 
+                          _isLoading = true;
                         });
                         final result = await AuthService().verifyEmail(
-                          email: widget.email , otp: otpCode);
+                          email: widget.email,
+                          otp: otpCode,
+                        );
                         print('Token from verifyEmail: ${result.token}');
-                        if (!mounted) return ; 
+                        if (!mounted) return;
                         setState(() {
-                          _isLoading = false; 
+                          _isLoading = false;
                         });
-                        CustomSnackBarForSignUp.show(context, 
-                        message: result.message,
-                        icon: result.success ?  Icons.check_circle : Icons.error,
-                        backgroundColor: result.success 
-                        ? const Color(0xFF2463EB)
-                          : Colors.red, 
-                        ); 
-                        if (result.success){
-                          Navigator.pushAndRemoveUntil(context, 
-                          MaterialPageRoute(builder: (context) => UserInformation(
-                            email: widget.email,
-                            token: result.token!,
-                          )), 
-                          (route) => false);
+                        CustomSnackBarForSignUp.show(
+                          context,
+                          message: result.message,
+                          icon: result.success
+                              ? Icons.check_circle
+                              : Icons.error,
+                          backgroundColor: result.success
+                              ? const Color(0xFF2463EB)
+                              : Colors.red,
+                        );
+                        if (result.success) {
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => UserInformation(
+                                email: widget.email,
+                                token: result.token!,
+                              ),
+                            ),
+                            (route) => false,
+                          );
                         }
-                      }
-                      ,mywidget: _isLoading
-                      ?  SizedBox(
+                      },
+                      mywidget: _isLoading
+                          ? SizedBox(
                               height: 20.r,
                               width: 20.r,
                               child: CircularProgressIndicator(
@@ -155,7 +173,6 @@ class GmailVerifyCodeForSignUp extends StatefulWidget {
 }
 
 class _GmailVerifyCodeForSignUpState extends State<GmailVerifyCodeForSignUp> {
-
   final List<TextEditingController> _controllers = List.generate(
     7,
     (index) => TextEditingController(),
@@ -234,7 +251,13 @@ class _GmailVerifyCodeForSignUpState extends State<GmailVerifyCodeForSignUp> {
 }
 
 class ResendCodeTimerForSignUp extends StatefulWidget {
-  const ResendCodeTimerForSignUp({super.key});
+  final email;
+  final otp;
+  const ResendCodeTimerForSignUp({
+    super.key,
+    required this.email,
+    required this.otp,
+  });
 
   @override
   State<ResendCodeTimerForSignUp> createState() =>
@@ -298,11 +321,29 @@ class _ResendCodeTimerForSignUpState extends State<ResendCodeTimerForSignUp> {
         ),
         if (_start == 0)
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               setState(() {
                 _start = 60;
                 startTimer();
               });
+              final result = await AuthService().checkEmail(
+                email: widget.email,
+              );
+              if (!result.success) {
+                CustomSnackBarForSignUp.show(
+                  context,
+                  message: result.message,
+                  icon: Icons.error,
+                  backgroundColor: Colors.red,
+                );
+              }
+              ;
+              if (result.success) {
+                CustomSnackBarForSignUp.show(
+                  context,
+                  message: 'A new code has been sent to your email',
+                );
+              }
             },
             child: Text(
               "Resend Now",
@@ -313,93 +354,6 @@ class _ResendCodeTimerForSignUpState extends State<ResendCodeTimerForSignUp> {
     );
   }
 }
-
-// class VerfiyAndConituneButtonForSignUp extends StatefulWidget {
-//   final bool isFromSettings;
-//   final String otpCode;
-//   final String email; 
-//   const VerfiyAndConituneButtonForSignUp({
-//     super.key,
-//     required this.isFromSettings,
-//     required this.otpCode,
-//     required this.email,
-//   });
-
-//   @override
-//   State<VerfiyAndConituneButtonForSignUp> createState() =>
-//       _VerfiyAndConituneButtonForSignUpState();
-// }
-
-// class _VerfiyAndConituneButtonForSignUpState
-//     extends State<VerfiyAndConituneButtonForSignUp> {
-//   late String _otpCode;
-//   @override
-//   void initState() {
-//     super.initState();
-//     _otpCode = widget.otpCode;
-//   }
-
-//   @override
-//   void didUpdateWidget(VerfiyAndConituneButtonForSignUp oldWidget) {
-//     super.didUpdateWidget(oldWidget); // Must be the standard Flutter name
-//     if (oldWidget.otpCode != widget.otpCode) {
-//       _otpCode = widget.otpCode;
-//     }
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return SizedBox(
-//       width: double.infinity,
-//       child: ElevatedButton(
-//         onPressed: () {
-//           if (_otpCode.length < 7) {
-//             CustomSnackBarForSignUp.show(
-//               context,
-//               message: 'Please enter a 7-digite code',
-//               backgroundColor: Colors.red,
-//               icon: Icons.error_outline,
-//             );
-//             return;
-//           }
-//           Navigator.push(
-//             context,
-//             MaterialPageRoute(
-//               builder: (context) =>
-//                   // RestPasswrod(isFromSettings: widget.isFromSettings,flow: PasswordFlow.forgetPasswordAuth,),
-//                   UserInformation(email:  widget.email);
-//             ),
-//           );
-//         },
-//         style: ElevatedButton.styleFrom(
-//           backgroundColor: const Color(0xFF2463EB),
-//           foregroundColor: Colors.white,
-//           padding: EdgeInsets.symmetric(vertical: 15.h),
-//           shape: RoundedRectangleBorder(
-//             borderRadius: BorderRadius.circular(15.r),
-//           ),
-//           elevation: 10.h,
-//         ),
-//         child: Row(
-//           mainAxisAlignment: MainAxisAlignment.center,
-//           children: [
-//             Text(
-//               "Verify & Continue",
-//               style: TextStyle(
-//                 fontWeight: FontWeight.w400,
-//                 fontFamily: "LineSeedJP",
-//                 fontSize: 16.sp,
-//                 color: Colors.white,
-//               ),
-//             ),
-//             10.horizontalSpace,
-//             Icon(Icons.check_circle_outline_outlined, size: 30.r),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
 
 class ButtonOfGmailValidation extends StatelessWidget {
   final VoidCallback function;

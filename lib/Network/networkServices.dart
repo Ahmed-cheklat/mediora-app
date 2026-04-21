@@ -391,8 +391,7 @@ class AuthService {
       final String? refreshToken = prefs.getString('refresh_token');
       final String? deviceId = prefs.getString('device_id');
 
-      //final String deviceId = await DeviceManager.getDeviceId();
-      if (accessToken == null) {
+      if (accessToken == null || refreshToken == null) {
         return AuthResult(
           success: false,
           message: "Session expired, please sign in again.",
@@ -403,7 +402,7 @@ class AuthService {
         Uri.parse('$_baseUrl/auth/refresh'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': accessToken,
+          'Authorization': 'Bearer $accessToken',
           'Cookie':
               'access_token=$accessToken; refresh_token=$refreshToken;device_id=$deviceId',
           //'x-device-id': deviceId,
@@ -432,7 +431,7 @@ class AuthService {
       if (response.statusCode == 401) {
         await prefs.remove('access_token');
         await prefs.remove('refresh_token');
-        print(response.body);
+        print('Refresh token failed with 401: ${response.body}');
         return AuthResult(
           success: false,
           message: "Session expired, please sign in again.",
@@ -609,15 +608,16 @@ class AuthService {
 
         final String? newAccessToken = response.headers['access_token'];
         final String? newRefreshToken = response.headers['refresh_token'];
-        
+
         if (newAccessToken != null) {
           await prefs.setString('access_token', newAccessToken);
         }
         if (newRefreshToken != null) {
           await prefs.setString('refresh_token', newRefreshToken);
-          print('New refresh token saved after password change: $newRefreshToken');
+          print(
+            'New refresh token saved after password change: $newRefreshToken',
+          );
         }
-
 
         return AuthResult(
           success: true,
@@ -670,5 +670,119 @@ class DeviceManager {
   static Future<void> clearDeviceId() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_deviceIdKey);
+  }
+}
+
+//---------------------------
+class AppointementService {
+  static const String _baseUrl = 'https://mediora-back-2.onrender.com';
+
+  Future<List<dynamic>> fetchDoctors({
+    required String specialty,
+    int skip = 0,
+    int limit = 10,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? accessToken = prefs.getString('access_token');
+
+      final response = await http.get(
+        Uri.parse(
+          '$_baseUrl/doctors?speciality=$specialty&skip=$skip&limit=$limit',
+        ),
+        headers: {
+          'Content-Type': 'application/json',
+          if (accessToken != null) 'Authorization': 'Bearer $accessToken',
+        },
+      );
+
+      print('fetchDoctors status: ${response.statusCode}');
+      print('fetchDoctors body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final list = data["data"];
+        return list is List ? list : [];
+      }
+      return [];
+    } catch (e) {
+      print('Network Error: $e');
+      return [];
+    }
+  }
+
+  ////////////////////////////////////
+  //Get information of a speicif doctor
+  Future<Map<String, dynamic>?> getDoctor({required String id}) async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final String? accessToken = prefs.getString('access_token');
+
+    final response = await http.get(
+      Uri.parse('$_baseUrl/doctors/$id'),
+      headers: {
+        'Content-Type': 'application/json',
+        if (accessToken != null) 'Authorization': 'Bearer $accessToken',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return data['data'] as Map<String, dynamic>;
+    }
+
+    if (response.statusCode == 401) {
+      final refreshed = await AuthService().getRefreshToken();
+      if (refreshed.success) {
+        return await getDoctor(id: id); // retry with new token
+      }
+      return null;
+    }
+
+    return null;
+  } catch (e) {
+    print('Network Error: $e');
+    return null;
+  }
+}
+}
+//---------------------------
+
+class UserServices {
+  static const String _baseUrl = 'https://mediora-back-2.onrender.com';
+
+  // Returns a Map containing the user data from the 'data' field of the response
+  Future<Map<String, dynamic>> getUser() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? accessToken = prefs.getString('access_token');
+
+      final response = await http.get(
+        Uri.parse('$_baseUrl/users/me'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (accessToken != null) 'Authorization': 'Bearer $accessToken',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonResponse = json.decode(response.body);
+        // Assuming the response structure contains a 'data' field with user info
+        if (jsonResponse.containsKey('data') && jsonResponse['data'] is Map) {
+          return jsonResponse['data'] as Map<String, dynamic>;
+        } else {
+          // If no 'data' field, return the whole response (fallback)
+          return jsonResponse;
+        }
+      } else {
+        // Handle non-200 responses
+        throw Exception(
+          'Failed to load user: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      // Re-throw or handle as needed
+      throw Exception('Error fetching user: $e');
+    }
   }
 }

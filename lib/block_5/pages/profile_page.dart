@@ -21,8 +21,37 @@ final Map<String, dynamic> userInfo = {
   "gender": "Male",
 };
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+
+  Map<String, dynamic>? _userInfo;
+
+    @override
+    void initState() {
+      super.initState();
+      _loadUser();
+    }
+
+    Future<void> _loadUser() async {
+      final data = await UserServices().getUser(); // your api service instance
+      if (mounted) setState(() => _userInfo = data);
+    }
+
+
+
+
+
+
+
+
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +78,9 @@ class ProfilePage extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      userInfo["first_name"],
+                      _userInfo?['first_name'] ?? '   ',
+              
+                      //userInfo["first_name"],
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 15.sp,
@@ -57,7 +88,7 @@ class ProfilePage extends StatelessWidget {
                     ),
                     5.horizontalSpace,
                     Text(
-                      userInfo["last_name"],
+                      _userInfo?["last_name"] ?? '  ',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 15.sp,
@@ -68,7 +99,7 @@ class ProfilePage extends StatelessWidget {
 
                 //user's email
                 Text(
-                  userInfo["email"],
+                   _userInfo?['email'] ?? '   ',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 12.sp,
