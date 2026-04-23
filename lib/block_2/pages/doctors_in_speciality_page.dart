@@ -115,7 +115,9 @@ class _DoctorsInSpecialityState extends State<DoctorsInSpeciality> {
 
                       final specialty = _cleanString(doctor['speciality']);
                       final networkImage = _cleanString(doctor['picture']);
-                      final validNetworkImage = networkImage.isNotEmpty ? networkImage : null;
+                      final validNetworkImage = networkImage.isNotEmpty
+                          ? networkImage
+                          : null;
 
                       return DoctorCard(
                         fullName: fullName,
@@ -124,14 +126,18 @@ class _DoctorsInSpecialityState extends State<DoctorsInSpeciality> {
                         onTap: () async {
                           if (_isNavigating) return;
                           _isNavigating = true;
-                          final fullDoctor = await AppointementService().getDoctor(
-                            id: doctor['id'].toString(),
-                          );
+                          final fullDoctor = await AppointementService()
+                              .getDoctor(id: doctor['id'].toString());
+                          final allServices = await AppointementService()
+                              .getServices(id: doctor['id'].toString());
                           if (fullDoctor != null && context.mounted) {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => DoctorPage(doctor: fullDoctor),
+                                builder: (context) =>
+                                    DoctorPage(doctor: fullDoctor,
+                                              services:  allServices,
+                                    ),
                               ),
                             );
                           }

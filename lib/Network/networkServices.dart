@@ -1,6 +1,8 @@
 // ignore_for_file: non_constant_identifier_names
 
 import 'dart:convert';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/rendering.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -714,62 +716,75 @@ class AppointementService {
   ////////////////////////////////////
   //Get information of a speicif doctor
   Future<Map<String, dynamic>?> getDoctor({required String id}) async {
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    final String? accessToken = prefs.getString('access_token');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? accessToken = prefs.getString('access_token');
 
-    final response = await http.get(
-      Uri.parse('$_baseUrl/doctors/$id'),
-      headers: {
-        'Content-Type': 'application/json',
-        if (accessToken != null) 'Authorization': 'Bearer $accessToken',
-      },
-    );
+      final response = await http.get(
+        Uri.parse('$_baseUrl/doctors/info/$id'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (accessToken != null) 'Authorization': 'Bearer $accessToken',
+        },
+      );
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      return data['data'] as Map<String, dynamic>;
-    }
-
-    if (response.statusCode == 401) {
-      final refreshed = await AuthService().getRefreshToken();
-      if (refreshed.success) {
-        return await getDoctor(id: id); // retry with new token
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        print(
+          'data of the doctor :-------------------------------------------------------- $data',
+        );
+        return data['data'] as Map<String, dynamic>;
       }
+
+      if (response.statusCode == 401) {
+        final refreshed = await AuthService().getRefreshToken();
+        if (refreshed.success) {
+          return await getDoctor(id: id); // retry with new token
+        }
+        return null;
+      }
+
+      return null;
+    } catch (e) {
+      print('Network Error: $e');
       return null;
     }
-
-    return null;
-  } catch (e) {
-    print('Network Error: $e');
-    return null;
   }
-}
 
   //------------------------
-  //Make an Appointement
-  
+  //function to get all services with their price and description
+  Future<List<dynamic>?> getServices({required String id}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? accessToken = prefs.getString('access_token');
+
+      final response = await http.get(
+        Uri.parse('$_baseUrl/doctors/$id/services'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (accessToken != null) 'Authorization': 'Bearer $accessToken',
+        },
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        print('services : $data'); 
+        return List<dynamic>.from(data['data']);
+      } else if (response.statusCode == 401) {
+        final refreshed = await AuthService().getRefreshToken();
+        if (refreshed.success) {
+          return await getServices(id: id);
+        }
+        return null;
+      }
+      return null;
+    } catch (e) {
+      print('Network error: $e');
+      return null;
+    }
+  }
 }
 //---------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 class UserServices {
   static const String _baseUrl = 'https://mediora-back-2.onrender.com';
@@ -806,6 +821,59 @@ class UserServices {
     } catch (e) {
       // Re-throw or handle as needed
       throw Exception('Error fetching user: $e');
+    }
+  }
+  //Modify user information
+
+  Future<bool> updateProfile({
+    String? firstName,
+    String? lastName,
+    String? username,
+    String? phone,
+    String? gender,
+    String? dateOfBirth,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? accessToken = prefs.getString('access_token');
+
+      // Only include fields that were actually provided
+      final Map<String, dynamic> body = {};
+      if (firstName != null) body['first_name'] = firstName;
+      if (lastName != null) body['last_name'] = lastName;
+      if (username != null) body['username'] = username;
+      if (phone != null) body['phone'] = phone;
+      if (gender != null) body['gender'] = gender.toLowerCase();
+      if (dateOfBirth != null) body['date_of_birth'] = dateOfBirth;
+
+      final response = await http.patch(
+        Uri.parse('$_baseUrl/users/me'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (accessToken != null) 'Authorization': 'Bearer $accessToken',
+        },
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 401) {
+        final refreshed = await AuthService().getRefreshToken();
+        if (refreshed.success) {
+          return await updateProfile(
+            firstName: firstName,
+            lastName: lastName,
+            username: username,
+            phone: phone,
+            gender: gender,
+            dateOfBirth: dateOfBirth,
+          );
+        }
+        return false;
+      }
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Update profile error: $e');
+      return false;
     }
   }
 }

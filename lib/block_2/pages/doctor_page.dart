@@ -4,8 +4,8 @@ import 'package:mediora/block_2/pages/book_and_pay_page.dart';
 
 class DoctorPage extends StatelessWidget {
   final Map<String, dynamic> doctor;
-
-  const DoctorPage({super.key, required this.doctor});
+  final List<dynamic>? services; 
+  const DoctorPage({super.key, required this.doctor,required this.services});
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +38,18 @@ class DoctorPage extends StatelessWidget {
         picture != null &&
         picture.toString().startsWith('http') &&
         picture.toString() != 'string';
+
+    
+    final Map<String, dynamic>? consultation = services?.firstWhere(
+    (s) => s['name'].toString().toLowerCase() == 'consultation',
+    orElse: () => null,
+    );
+
+  final List<dynamic> otherServices = services
+        ?.where((s) => s['name'].toString().toLowerCase() != 'consultation')
+        .toList() ?? [];
+
+
 
     return Scaffold(
       body: CustomScrollView(
@@ -282,7 +294,182 @@ class DoctorPage extends StatelessWidget {
                   ],
 
                   24.verticalSpace,
-
+                  // ── Consultation Fee ─────────────────────────────────────
+                  
+                  if (consultation != null) ...[
+                    const _SectionTitle(title: 'Consultation Fee'),
+                    12.verticalSpace,
+                    Card(
+                      child: ListTile(
+                        contentPadding:  EdgeInsets.symmetric(
+                          horizontal: 16.h,
+                          vertical: 8.w,
+                        ),
+                        leading:  Icon(
+                          Icons.payments_outlined,
+                          color: Color(0xFF2463EB),
+                          size: 36.r,
+                        ),
+                        title: Text(
+                          'Consultation',
+                          style: TextStyle(
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                       
+                        trailing: Text(
+                          '${consultation['price']} DZD',
+                          style: TextStyle(
+                            fontSize: 14.sp,
+                            color: const Color(0xFF2463EB),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                  // ── Services ─────────────────────────────────────────────
+                  if (otherServices.isNotEmpty) ...[
+                  24.verticalSpace,
+                  const _SectionTitle(title: 'Available Services'),
+                  12.verticalSpace,
+                  Card(
+                    child: Column(
+                      children: [
+                        // Header row
+                        Container(
+                          padding:  EdgeInsets.symmetric(horizontal: 16.h, vertical: 10.w),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2463EB).withOpacity(0.1),
+                            borderRadius:  BorderRadius.only(
+                              topLeft: Radius.circular(12.r),
+                              topRight: Radius.circular(12.r),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Service',
+                                  style: TextStyle(
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFF2463EB),
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                'Price',
+                                style: TextStyle(
+                                  fontSize: 13.sp,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF2463EB),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Service rows
+                        ...List.generate(otherServices.length, (index) {
+                          final service = otherServices[index] as Map<String, dynamic>;
+                          return Column(
+                            children: [
+                              const _Divider(),
+                              InkWell(
+                                onTap: () {
+                                  showModalBottomSheet(
+                                    context: context,
+                                    shape: const RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.vertical(
+                                        top: Radius.circular(20),
+                                      ),
+                                    ),
+                                    builder: (_) => Padding(
+                                      padding: const EdgeInsets.all(24),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.medical_services_outlined,
+                                                color: Color(0xFF2463EB),
+                                              ),
+                                              12.horizontalSpace,
+                                              Text(
+                                                service['name'] ?? '',
+                                                style: TextStyle(
+                                                  fontSize: 16.sp,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          16.verticalSpace,
+                                          Text(
+                                            service['description'] ?? 'No description available.',
+                                            style: TextStyle(
+                                              fontSize: 13.sp,
+                                              height: 1.6,
+                                              color: isDark ? Colors.white70 : const Color(0xFF444444),
+                                            ),
+                                          ),
+                                          16.verticalSpace,
+                                          Text(
+                                            'Price: ${service['price']} DZD',
+                                            style: TextStyle(
+                                              fontSize: 14.sp,
+                                              fontWeight: FontWeight.bold,
+                                              color: const Color(0xFF2463EB),
+                                            ),
+                                          ),
+                                          24.verticalSpace,
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 12,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          service['name'] ?? '',
+                                          style: TextStyle(fontSize: 13.sp),
+                                        ),
+                                      ),
+                                      Text(
+                                        '${service['price']} DZD',
+                                        style: TextStyle(
+                                          fontSize: 13.sp,
+                                          color: const Color(0xFF2463EB),
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      8.horizontalSpace,
+                                      const Icon(
+                                        Icons.info_outline,
+                                        size: 16,
+                                        color: Colors.grey,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+                ],
+                  24.verticalSpace, 
                   // ── Book button ───────────────────────────────
                   SizedBox(
                     width: double.infinity,

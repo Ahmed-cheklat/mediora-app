@@ -39,6 +39,14 @@ class _HomepageState extends State<Homepage> {
     _initUser();
   }
 
+
+Future<void> _refreshUser() async {
+  final data = await UserServices().getUser();
+  if (data != null) {
+    await _saveUser(data);
+  }
+  await _readUser();
+}
   // Step 1: fetch from API, save to secure storage, then read and display
   Future<void> _initUser() async {
     final data = await UserServices().getUser();
