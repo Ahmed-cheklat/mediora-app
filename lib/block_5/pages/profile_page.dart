@@ -12,9 +12,6 @@ import 'package:mediora/block_5/pages/notification_modes_page.dart';
 import 'package:mediora/block_5/tools/themeProvider.dart';
 import 'package:provider/provider.dart';
 
-//an example of user information
-
-
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
 
@@ -23,58 +20,47 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-
-  final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   String _firstName = '';
   String _lastName = '';
   String _email = '';
+  String _profilePicture = '';
 
-
-   @override
+  @override
   void initState() {
     super.initState();
     _loadUserData();
   }
 
-  Future<void> _loadUserData() async {
-    // Read each field individually from secure storage
-    final firstName = await _secureStorage.read(key: 'first_name') ?? '';
-    final lastName  = await _secureStorage.read(key: 'last_name')  ?? '';
-    final email     = await _secureStorage.read(key: 'email')      ?? '';
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadUserData();
+}
 
+  Future<void> _loadUserData() async {
+    final firstName = await _secureStorage.read(key: 'first_name') ?? '';
+    final lastName = await _secureStorage.read(key: 'last_name') ?? '';
+    final email = await _secureStorage.read(key: 'email') ?? '';
+    final picture = await _secureStorage.read(key: 'picture') ?? '';
     if (mounted) {
       setState(() {
         _firstName = firstName;
         _lastName = lastName;
         _email = email;
+        _profilePicture = picture;
       });
     }
   }
-  
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-@override
+  @override
   Widget build(BuildContext context) {
-    // at the top of build method
     final themeProvider = Provider.of<ThemeProvider>(context);
     return Padding(
       padding: EdgeInsets.all(8.0.r),
       child: ListView(
         children: [
           30.verticalSpace,
-          // a sizebox which contain picture,fullname,gmail and button to push to edit profile page
           SizedBox(
             height: 200.h,
             width: double.infinity,
@@ -82,17 +68,13 @@ class _ProfilePageState extends State<ProfilePage> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                ProfilePictureCustom(),
+                ProfilePictureCustom(picture: _profilePicture),
                 10.verticalSpace,
-
-                //User's fullname
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      _firstName ,
-
-                      //userInfo["first_name"],
+                      _firstName,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 15.sp,
@@ -108,8 +90,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ],
                 ),
-
-                //user's email
                 Text(
                   _email,
                   style: TextStyle(
@@ -118,19 +98,15 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ),
                 5.verticalSpace,
-
-                //edit profile button to push to edit profile page
               ],
             ),
           ),
-
           Divider(
             thickness: 1,
             color: Colors.grey.withOpacity(0.3),
             indent: 16.w,
             endIndent: 16.w,
           ),
-
           Padding(
             padding: EdgeInsets.all(8.0.r),
             child: Text(
@@ -144,15 +120,10 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           Column(
             children: [
-              //Dark mode button
               Card(
-                //color: Colors.white,
                 shadowColor: const Color(0xFF2463EB),
                 child: ListTile(
-                  leading: Icon(
-                    Icons.dark_mode,
-                    color: const Color(0xFF2463EB),
-                  ),
+                  leading: const Icon(Icons.dark_mode, color: Color(0xFF2463EB)),
                   title: Text(
                     'Dark Mode',
                     style: TextStyle(
@@ -162,16 +133,12 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ),
                   trailing: Switch(
-                    value: themeProvider
-                        .isDark, // 👈 will be replaced with themeProvider later
+                    value: themeProvider.isDark,
                     onChanged: (_) => themeProvider.toggleTheme(),
                     activeColor: const Color(0xFF2463EB),
-
-                    // 👈 will be replaced with themeProvider.toggleTheme() later
                   ),
                 ),
               ),
-              //list of preferences
               ...List.generate(
                 preferencesActions.length,
                 (index) => ActionsCardCustom(
@@ -180,19 +147,18 @@ class _ProfilePageState extends State<ProfilePage> {
                   function: () {
                     switch (index) {
                       case 0:
-                        NavigateTo.pushTo(context, ChangePasswordPage());
+                        NavigateTo.pushTo(context, const ChangePasswordPage());
                         break;
                       case 1:
-                        NavigateTo.pushTo(context, NotificationModesPage());
+                        NavigateTo.pushTo(context, const NotificationModesPage());
                         break;
                       case 2:
-                        NavigateTo.pushTo(context, FaqPage());
+                        NavigateTo.pushTo(context, const FaqPage());
                         break;
                       case 3:
-                        NavigateTo.pushTo(context, Policies());
+                        NavigateTo.pushTo(context, const Policies());
                         break;
                     }
-                    // handle each action
                   },
                 ),
               ),
@@ -201,7 +167,7 @@ class _ProfilePageState extends State<ProfilePage> {
           Padding(
             padding: EdgeInsets.all(8.0.r),
             child: Text(
-              'ACCOUNT ',
+              'ACCOUNT',
               style: TextStyle(
                 color: Colors.grey,
                 fontWeight: FontWeight.bold,
@@ -229,13 +195,10 @@ class _ProfilePageState extends State<ProfilePage> {
                               print('Logged out');
                               Navigator.pushAndRemoveUntil(
                                 context,
-                                MaterialPageRoute(
-                                  builder: (context) => SignIn(),
-                                ),
+                                MaterialPageRoute(builder: (context) => SignIn()),
                                 (route) => false,
                               );
-                            }
-                            if (!result.success) {
+                            } else {
                               CustomSnackBarForSignIn.show(
                                 context,
                                 message: result.message,
@@ -247,7 +210,8 @@ class _ProfilePageState extends State<ProfilePage> {
                         );
                         break;
                       case 1:
-                        NavigateTo.pushTo(context, DeleteAccountPage());
+                        NavigateTo.pushTo(context, const DeleteAccountPage());
+                        break;
                     }
                   },
                 ),
@@ -260,20 +224,53 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 }
 
-class ProfilePictureCustom extends StatelessWidget {
-  const ProfilePictureCustom({super.key});
+class ProfilePictureCustom extends StatefulWidget {
+  final String picture;
+
+  const ProfilePictureCustom({super.key, required this.picture});
+
+  @override
+  State<ProfilePictureCustom> createState() => _ProfilePictureCustomState();
+}
+
+class _ProfilePictureCustomState extends State<ProfilePictureCustom> {
+  late String _picture;
+
+  @override
+  void didUpdateWidget(ProfilePictureCustom oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.picture != widget.picture) {
+      setState(() => _picture = widget.picture);
+  }
+}
+
+  @override
+  void initState() {
+    super.initState();
+    _picture = widget.picture;
+  }
+
+  Future<void> _reloadPicture() async {
+    const storage = FlutterSecureStorage();
+    final picture = await storage.read(key: 'picture') ?? '';
+    if (mounted) setState(() => _picture = picture);
+  }
+
+  bool get _hasValidPicture =>
+      _picture.isNotEmpty &&
+      _picture != 'string' &&
+      _picture.startsWith('http');
 
   @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // profile picture
         CircleAvatar(
           radius: 45.r,
-          backgroundImage: AssetImage('assets/default_avatar.png'),
+          backgroundImage: _hasValidPicture
+              ? NetworkImage(_picture) as ImageProvider
+              : const AssetImage('assets/default_avatar.png'),
         ),
-
-        // pencil icon at bottom right
         Positioned(
           bottom: 0.h,
           right: 0.w,
@@ -281,15 +278,18 @@ class ProfilePictureCustom extends StatelessWidget {
             width: 28.r,
             height: 28.r,
             decoration: BoxDecoration(
-              color: Color(0xFF2463EB),
+              color: const Color(0xFF2463EB),
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white, width: 2.w),
             ),
             child: GestureDetector(
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => EditProfilePage()),
-              ),
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const EditProfilePage()),
+                );
+                _reloadPicture();
+              },
               child: Icon(Icons.edit, color: Colors.white, size: 14.r),
             ),
           ),
@@ -299,8 +299,6 @@ class ProfilePictureCustom extends StatelessWidget {
   }
 }
 
-// a custom class for the actions inside profile page
-// it contains all from change password action to delete account action excepting to dark and light action
 class ActionsCardCustom extends StatelessWidget {
   final Function function;
   final IconData icon;
@@ -318,25 +316,17 @@ class ActionsCardCustom extends StatelessWidget {
     return GestureDetector(
       onTap: () => function(),
       child: Card(
-        //color: Colors.white,
         shadowColor: const Color(0xFF2463EB),
         child: ListTile(
-          leading: Icon(
-            icon, // 👈 directly use icon
-            color: const Color(0xFF2463EB),
-          ),
-          title: Text(
-            title,
-            style: TextStyle(fontSize: 13.sp),
-          ), // 👈 directly use title
-          trailing: Icon(Icons.chevron_right),
+          leading: Icon(icon, color: const Color(0xFF2463EB)),
+          title: Text(title, style: TextStyle(fontSize: 13.sp)),
+          trailing: const Icon(Icons.chevron_right),
         ),
       ),
     );
   }
 }
 
-//list of actions (names and icons)
 final List<Map<String, dynamic>> preferencesActions = [
   {"title": "Change Password", "icon": Icons.lock},
   {"title": "Notifications", "icon": Icons.notifications},
@@ -344,13 +334,11 @@ final List<Map<String, dynamic>> preferencesActions = [
   {"title": "Privacy Policy", "icon": Icons.shield},
 ];
 
-// log out and delete account actions
 final List<Map<String, dynamic>> accountActions = [
   {"title": "Log Out", "icon": Icons.logout},
   {"title": "Delete Account", "icon": Icons.delete},
 ];
 
-//button of account (log out and delete account)
 class ActionsCardForAccountCustom extends StatelessWidget {
   final Function function;
   final IconData icon;
@@ -370,7 +358,6 @@ class ActionsCardForAccountCustom extends StatelessWidget {
       child: SizedBox(
         height: 60.h,
         child: Card(
-          //color: const Color(0xFFFFF0F0),
           shadowColor: Colors.red,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -394,7 +381,6 @@ class ActionsCardForAccountCustom extends StatelessWidget {
   }
 }
 
-//a class to avoid repetetion at the switch
 class NavigateTo {
   static void pushTo(BuildContext context, Widget destination) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => destination));
@@ -411,18 +397,18 @@ class ConfirmDialog {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(title, style: TextStyle(fontSize: 15)),
+        title: Text(title, style: const TextStyle(fontSize: 15)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: TextStyle(color: Colors.grey)),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              onConfirm(); // 👈 call the function
+              onConfirm();
             },
-            child: Text(confirmText, style: TextStyle(color: Colors.red)),
+            child: Text(confirmText, style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),

@@ -17,6 +17,7 @@ class DoctorPage extends StatelessWidget {
     final username = doctor['username'] ?? '';
     final email = doctor['email'] ?? '';
     final picture = doctor['picture'];
+    final gender = doctor['gender']; 
     final description = (doctor['description'] as String?)?.trim() ?? '';
     final clinicPos = (doctor['clinic_pos'] as String?)?.trim() ?? '';
     final imageForWorkplace = doctor['image_for_workplace'];
@@ -96,8 +97,10 @@ class DoctorPage extends StatelessWidget {
                         backgroundColor: const Color(0xFFE8EFFD),
                         backgroundImage: hasValidPicture
                             ? NetworkImage(picture.toString())
-                            : const AssetImage('assets/doctor_male_avatar.png')
-                                  as ImageProvider,
+                            : (gender == "male" ? 
+                            const AssetImage('assets/doctor_male_avatar.png') : 
+                            const AssetImage('assets/doctor_female_avatar.png')
+                            ) as ImageProvider,
                       ),
                     ),
                     16.verticalSpace,
@@ -122,7 +125,7 @@ class DoctorPage extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                            padding:  EdgeInsets.symmetric(horizontal: 14.h, vertical: 6.w),
                             decoration: BoxDecoration(
                               color: const Color(0xFF2463EB).withOpacity(0.12),
                               borderRadius: BorderRadius.circular(20),

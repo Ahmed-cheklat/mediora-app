@@ -12,7 +12,7 @@ class InvoicePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final user = UserServices().getUser();
+    UserServices().getUser();
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,

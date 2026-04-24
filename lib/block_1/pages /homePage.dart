@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mediora/Network/networkServices.dart';
-import 'package:mediora/block_1/tools/advice_card.dart';
 import 'package:mediora/block_1/tools/appointement_card.dart';
 import 'package:mediora/block_2/pages/specialites_page.dart';
 import 'package:mediora/block_3/pages/consult_page.dart';
@@ -40,20 +39,11 @@ class _HomepageState extends State<Homepage> {
   }
 
 
-Future<void> _refreshUser() async {
-  final data = await UserServices().getUser();
-  if (data != null) {
-    await _saveUser(data);
-  }
-  await _readUser();
-}
   // Step 1: fetch from API, save to secure storage, then read and display
   Future<void> _initUser() async {
     final data = await UserServices().getUser();
-    if (data != null) {
-      await _saveUser(data);
-    }
-    await _readUser();
+    await _saveUser(data);
+      await _readUser();
   }
 
   Future<void> _saveUser(Map<String, dynamic> data) async {

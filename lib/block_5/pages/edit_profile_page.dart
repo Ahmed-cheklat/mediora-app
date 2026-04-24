@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mediora/Network/networkServices.dart';
+import 'dart:io';
+
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -11,8 +14,9 @@ class EditProfilePage extends StatefulWidget {
 }
 
 class _EditProfilePageState extends State<EditProfilePage> {
-  GlobalKey<FormState> _formKey = GlobalKey<FormState>(); 
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  File? _pickedImage;
 
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
@@ -62,6 +66,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
     });
   }
 
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+      maxWidth: 512,
+      maxHeight: 512,
+    );
+    if (image != null) {
+      setState(() => _pickedImage = File(image.path));
+    }
+  }
+
   Future<void> _pickDate() async {
     final now = DateTime.now();
     final picked = await showDatePicker(
@@ -82,16 +99,30 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (picked != null) setState(() => _selectedDob = picked);
   }
 
-    Future<void> _onSave() async {
+  Future<void> _onSave() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isSaving = true);
     try {
+      // Upload picture if a new one was picked
+      if (_pickedImage != null) {
+        final newUrl = await UserServices().uploadProfilePicture(_pickedImage!);
+        if (newUrl != null) {
+          await _secureStorage.write(key: 'picture', value: newUrl);
+          if (mounted) {
+            setState(() {
+              _pictureUrl = newUrl;
+              _pickedImage = null;
+            });
+          }
+        }
+      }
+
       final success = await UserServices().updateProfile(
-        firstName:   _firstNameEditable ? _firstNameController.text.trim() : null,
-        lastName:    _lastNameEditable  ? _lastNameController.text.trim()  : null,
-        username:    _usernameEditable  ? _usernameController.text.trim()  : null,
-        gender:      _selectedGender,
+        firstName: _firstNameEditable ? _firstNameController.text.trim() : null,
+        lastName: _lastNameEditable ? _lastNameController.text.trim() : null,
+        username: _usernameEditable ? _usernameController.text.trim() : null,
+        gender: _selectedGender,
         dateOfBirth: _selectedDob != null
             ? '${_selectedDob!.year}-${_selectedDob!.month.toString().padLeft(2, '0')}-${_selectedDob!.day.toString().padLeft(2, '0')}'
             : null,
@@ -100,13 +131,35 @@ class _EditProfilePageState extends State<EditProfilePage> {
       if (!mounted) return;
 
       if (success) {
-        // Save updated values to secure storage
-        if (_firstNameEditable) await _secureStorage.write(key: 'first_name', value: _firstNameController.text.trim());
-        if (_lastNameEditable)  await _secureStorage.write(key: 'last_name',  value: _lastNameController.text.trim());
-        if (_usernameEditable)  await _secureStorage.write(key: 'username',   value: _usernameController.text.trim());
-        if (_selectedGender != null) await _secureStorage.write(key: 'gender', value: _selectedGender!);
-        if (_selectedDob != null) await _secureStorage.write(key: 'date_of_birth', value: _selectedDob!.toIso8601String());
+        if (_firstNameEditable) {
+          await _secureStorage.write(
+            key: 'first_name',
+            value: _firstNameController.text.trim(),
+          );
+        }
+        if (_lastNameEditable) {
+          await _secureStorage.write(
+            key: 'last_name',
+            value: _lastNameController.text.trim(),
+          );
+        }
+        if (_usernameEditable) {
+          await _secureStorage.write(
+            key: 'username',
+            value: _usernameController.text.trim(),
+          );
+        }
+        if (_selectedGender != null) {
+          await _secureStorage.write(key: 'gender', value: _selectedGender!);
+        }
+        if (_selectedDob != null) {
+          await _secureStorage.write(
+            key: 'date_of_birth',
+            value: _selectedDob!.toIso8601String(),
+          );
+        }
 
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Row(
@@ -118,15 +171,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
             ),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
 
         setState(() {
           _firstNameEditable = false;
-          _lastNameEditable  = false;
-          _usernameEditable  = false;
+          _lastNameEditable = false;
+          _usernameEditable = false;
         });
+        await Future.delayed(const Duration(seconds: 1));
+       if (mounted) Navigator.pop(context);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -139,10 +196,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
             ),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
+      
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -185,7 +245,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   CircleAvatar(
                     radius: 55.r,
                     backgroundColor: const Color(0xFFE8EFFD),
-                    backgroundImage: _pictureUrl != null
+                    backgroundImage: _pickedImage != null
+                        ? FileImage(_pickedImage!) as ImageProvider
+                        : _pictureUrl != null
                         ? NetworkImage(_pictureUrl!) as ImageProvider
                         : const AssetImage('assets/default_avatar.png'),
                   ),
@@ -193,9 +255,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     bottom: 0,
                     right: 0,
                     child: GestureDetector(
-                      onTap: () {
-                        // TODO: image picker
-                      },
+                      onTap: _pickImage,
                       child: Container(
                         width: 34.r,
                         height: 34.r,
@@ -221,7 +281,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               ),
             ),
             28.verticalSpace,
-        
+
             // ── Email (read-only) ─────────────────────────────────
             _SectionLabel(label: 'Email'),
             8.verticalSpace,
@@ -231,7 +291,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               isDark: isDark,
             ),
             20.verticalSpace,
-        
+
             // ── First Name ────────────────────────────────────────
             _SectionLabel(label: 'First Name'),
             8.verticalSpace,
@@ -245,7 +305,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               }),
             ),
             20.verticalSpace,
-        
+
             // ── Last Name ─────────────────────────────────────────
             _SectionLabel(label: 'Last Name'),
             8.verticalSpace,
@@ -259,7 +319,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               }),
             ),
             20.verticalSpace,
-        
+
             // ── Username ──────────────────────────────────────────
             _SectionLabel(label: 'Username'),
             8.verticalSpace,
@@ -272,14 +332,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
               }),
             ),
             20.verticalSpace,
-        
+
             // ── Gender ────────────────────────────────────────────
             _SectionLabel(label: 'Gender'),
             8.verticalSpace,
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF3F4F6),
+                color: isDark
+                    ? const Color(0xFF1E1E1E)
+                    : const Color(0xFFF3F4F6),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: DropdownButtonHideUnderline(
@@ -294,7 +356,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     Icons.keyboard_arrow_down,
                     color: Color(0xFF2463EB),
                   ),
-                  dropdownColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                  dropdownColor: isDark
+                      ? const Color(0xFF1E1E1E)
+                      : Colors.white,
                   items: ['Male', 'Female'].map((g) {
                     return DropdownMenuItem(
                       value: g,
@@ -318,14 +382,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
               ),
             ),
             20.verticalSpace,
-        
+
             // ── Date of Birth ─────────────────────────────────────
             _SectionLabel(label: 'Date of Birth'),
             8.verticalSpace,
             GestureDetector(
               onTap: _pickDate,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 16,
+                ),
                 decoration: BoxDecoration(
                   color: isDark
                       ? const Color(0xFF1E1E1E)
@@ -361,15 +428,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
               ),
             ),
             36.verticalSpace,
-        
+
             // ── Save Button ───────────────────────────────────────
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: _isSaving ? null : _onSave,
-
-                
-            
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2463EB),
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -437,7 +501,7 @@ class _ReadOnlyField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding:  EdgeInsets.symmetric(horizontal: 14.h, vertical: 16.w),
+      padding: EdgeInsets.symmetric(horizontal: 14.h, vertical: 16.w),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFEEEEEE),
         borderRadius: BorderRadius.circular(14.r),
@@ -452,7 +516,7 @@ class _ReadOnlyField extends StatelessWidget {
               style: TextStyle(fontSize: 13.sp, color: Colors.grey),
             ),
           ),
-           Icon(Icons.lock_outline, color: Colors.grey, size: 16.r),
+          Icon(Icons.lock_outline, color: Colors.grey, size: 16.r),
         ],
       ),
     );
@@ -479,7 +543,6 @@ class _EditableField extends StatefulWidget {
 }
 
 class _EditableFieldState extends State<_EditableField> {
-
   final FocusNode _focusNode = FocusNode();
 
   @override
@@ -508,19 +571,19 @@ class _EditableFieldState extends State<_EditableField> {
         color: widget.isDark ? Colors.white : Colors.black,
       ),
       validator: (value) {
-        if (value == null || value.trim().isEmpty) {
-          return "Name is required";
-        }
-        if (value.trim().length < 2) {
+        if (value == null || value.trim().isEmpty) return "Name is required";
+        if (value.trim().length < 2)
           return "Name must be at least 2 characters";
-        }
-        if (!RegExp(r"^[a-zA-Z\s]+$").hasMatch(value.trim())) {
+        if (!RegExp(r"^[a-zA-Z\s]+$").hasMatch(value.trim()))
           return "Name must contain letters only";
-        }
         return null;
       },
       decoration: InputDecoration(
-        prefixIcon: Icon(widget.icon, color: const Color(0xFF2463EB), size: 20.r),
+        prefixIcon: Icon(
+          widget.icon,
+          color: const Color(0xFF2463EB),
+          size: 20.r,
+        ),
         suffixIcon: GestureDetector(
           onTap: widget.onToggle,
           child: Icon(
@@ -531,8 +594,12 @@ class _EditableFieldState extends State<_EditableField> {
         ),
         filled: true,
         fillColor: widget.isEditable
-            ? (widget.isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF3F4F6))
-            : (widget.isDark ? const Color(0xFF2A2A2A) : const Color(0xFFEEEEEE)),
+            ? (widget.isDark
+                  ? const Color(0xFF1E1E1E)
+                  : const Color(0xFFF3F4F6))
+            : (widget.isDark
+                  ? const Color(0xFF2A2A2A)
+                  : const Color(0xFFEEEEEE)),
         contentPadding: const EdgeInsets.symmetric(vertical: 16),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -558,7 +625,6 @@ class _EditableFieldState extends State<_EditableField> {
     );
   }
 }
-
 
 class _EditableFieldUsername extends StatefulWidget {
   final TextEditingController controller;
@@ -606,19 +672,19 @@ class _EditableFieldUsernameState extends State<_EditableFieldUsername> {
         color: widget.isDark ? Colors.white : Colors.black,
       ),
       validator: (value) {
-        if (value == null || value.trim().isEmpty) {
+        if (value == null || value.trim().isEmpty)
           return "Username is required";
-        }
-        if (value.contains(' ')) {
-          return "Username cannot contain spaces";
-        }
-        if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value.trim())) {
+        if (value.contains(' ')) return "Username cannot contain spaces";
+        if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value.trim()))
           return "Username can only contain letters, numbers, and _";
-        }
         return null;
       },
       decoration: InputDecoration(
-        prefixIcon: const Icon(Icons.alternate_email, color: Color(0xFF2463EB), size: 20),
+        prefixIcon: const Icon(
+          Icons.alternate_email,
+          color: Color(0xFF2463EB),
+          size: 20,
+        ),
         suffixIcon: GestureDetector(
           onTap: widget.onToggle,
           child: Icon(
@@ -629,8 +695,12 @@ class _EditableFieldUsernameState extends State<_EditableFieldUsername> {
         ),
         filled: true,
         fillColor: widget.isEditable
-            ? (widget.isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF3F4F6))
-            : (widget.isDark ? const Color(0xFF2A2A2A) : const Color(0xFFEEEEEE)),
+            ? (widget.isDark
+                  ? const Color(0xFF1E1E1E)
+                  : const Color(0xFFF3F4F6))
+            : (widget.isDark
+                  ? const Color(0xFF2A2A2A)
+                  : const Color(0xFFEEEEEE)),
         contentPadding: const EdgeInsets.symmetric(vertical: 16),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),

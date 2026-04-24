@@ -1,8 +1,10 @@
 // ignore_for_file: non_constant_identifier_names
 
 import 'dart:convert';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/rendering.dart';
+import 'dart:io';
+import 'package:cloudinary_public/cloudinary_public.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -768,7 +770,7 @@ class AppointementService {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
-        print('services : $data'); 
+        print('services : $data');
         return List<dynamic>.from(data['data']);
       } else if (response.statusCode == 401) {
         final refreshed = await AuthService().getRefreshToken();
@@ -805,13 +807,20 @@ class UserServices {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = json.decode(response.body);
+        Map<String, dynamic> userData;
         // Assuming the response structure contains a 'data' field with user info
         if (jsonResponse.containsKey('data') && jsonResponse['data'] is Map) {
-          return jsonResponse['data'] as Map<String, dynamic>;
+          userData = jsonResponse['data'] as Map<String, dynamic>;
         } else {
           // If no 'data' field, return the whole response (fallback)
-          return jsonResponse;
+          userData = jsonResponse;
         }
+        final secureStorage = const FlutterSecureStorage();
+        final picture = userData['picture']?.toString() ?? '';
+        await secureStorage.write(key: 'picture', value: picture);
+        print('Picture saved from getUser: $picture');
+
+  return userData;
       } else {
         // Handle non-200 responses
         throw Exception(
@@ -874,6 +883,57 @@ class UserServices {
     } catch (e) {
       print('Update profile error: $e');
       return false;
+    }
+  }
+
+  //Upload profile picture
+  Future<String?> uploadProfilePicture(File image) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? accessToken = prefs.getString('access_token');
+
+      // 1. Upload to Cloudinary
+      final cloudinary = CloudinaryPublic('dc7qsxfpb', 'tcs7z4na');
+
+      final cloudinaryResponse = await cloudinary.uploadFile(
+        CloudinaryFile.fromFile(
+          image.path,
+          resourceType: CloudinaryResourceType.Image,
+        ),
+      );
+
+      // 2. Send metadata to your backend
+      final response = await http.post(
+        Uri.parse(
+          '$_baseUrl/users/profile',
+        ), // confirm endpoint with backend dev
+        headers: {
+          'Content-Type': 'application/json',
+          if (accessToken != null) 'Authorization': 'Bearer $accessToken',
+        },
+        body: jsonEncode({
+          'public_id': cloudinaryResponse.publicId,
+          'format': 'jpg',
+          'resource_type': 'image',
+          'secure_url': cloudinaryResponse.secureUrl,
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        return data['secure_url'] as String?;
+      }
+
+      if (response.statusCode == 401) {
+        final refreshed = await AuthService().getRefreshToken();
+        if (refreshed.success) return await uploadProfilePicture(image);
+        return null;
+      }
+
+      return null;
+    } catch (e) {
+      print('Upload profile picture error: $e');
+      return null;
     }
   }
 }
