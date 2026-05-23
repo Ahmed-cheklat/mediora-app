@@ -14,11 +14,12 @@ class DoctorsInSpeciality extends StatefulWidget {
 
 class _DoctorsInSpecialityState extends State<DoctorsInSpeciality> {
   static const int _pageSize = 10;
-  bool _isNavigating = false;
+
   final List<dynamic> _doctors = [];
   final ScrollController _scrollController = ScrollController();
 
   bool _isLoading = false;
+  bool _isLoadingDoctor = false;
   bool _hasMore = true;
   int _skip = 0;
 
@@ -82,71 +83,88 @@ class _DoctorsInSpecialityState extends State<DoctorsInSpeciality> {
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
       ),
-      body: Column(
+      body: Stack(
         children: [
-          SearchForDoctorInSpeciality(
-            onSearch: (firstName, lastName) {
-              print('firstName: $firstName, lastName: $lastName');
-            },
-          ),
-          Expanded(
-            child: _doctors.isEmpty && !_isLoading
-                ? const Center(
-                    child: Text('No doctors found for this specialty.'),
-                  )
-                : ListView.builder(
-                    controller: _scrollController,
-                    itemCount: _doctors.length + (_hasMore ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      if (index == _doctors.length) {
-                        return const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24),
-                          child: Center(child: CircularProgressIndicator()),
-                        );
-                      }
-
-                      final doctor = _doctors[index];
-
-                      // Build full name skipping 'null'
-                      final firstName = _cleanString(doctor['first_name']);
-                      final lastName = _cleanString(doctor['last_name']);
-                      String fullName = 'Dr. $firstName $lastName'.trim();
-                      if (fullName == 'Dr.') fullName = 'Dr.';
-
-                      final specialty = _cleanString(doctor['speciality']);
-                      final networkImage = _cleanString(doctor['picture']);
-                      final validNetworkImage = networkImage.isNotEmpty
-                          ? networkImage
-                          : null;
-
-                      return DoctorCard(
-                        fullName: fullName,
-                        specialty: specialty,
-                        networkImage: validNetworkImage,
-                        onTap: () async {
-                          if (_isNavigating) return;
-                          _isNavigating = true;
-                          final fullDoctor = await AppointementService()
-                              .getDoctor(id: doctor['id'].toString());
-                          final allServices = await AppointementService()
-                              .getServices(id: doctor['id'].toString());
-                          if (fullDoctor != null && context.mounted) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    DoctorPage(doctor: fullDoctor,
-                                              services:  allServices,
-                                    ),
-                              ),
+          Column(
+            children: [
+              SearchForDoctorInSpeciality(
+                onSearch: (firstName, lastName) {
+                  print('firstName: $firstName, lastName: $lastName');
+                },
+              ),
+              Expanded(
+                child: _doctors.isEmpty && !_isLoading
+                    ? const Center(
+                        child: Text('No doctors found for this specialty.'),
+                      )
+                    : ListView.builder(
+                        controller: _scrollController,
+                        itemCount: _doctors.length + (_hasMore ? 1 : 0),
+                        itemBuilder: (context, index) {
+                          if (index == _doctors.length) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 24),
+                              child: Center(child: CircularProgressIndicator()),
                             );
                           }
-                          _isNavigating = false;
+
+                          final doctor = _doctors[index];
+
+                          final firstName = _cleanString(doctor['first_name']);
+                          final lastName = _cleanString(doctor['last_name']);
+                          String fullName = 'Dr. $firstName $lastName'.trim();
+                          if (fullName == 'Dr.') fullName = 'Dr.';
+
+                          final specialty = _cleanString(doctor['speciality']);
+                          final networkImage = _cleanString(doctor['picture']);
+                          final validNetworkImage =
+                              networkImage.isNotEmpty ? networkImage : null;
+
+                          return DoctorCard(
+                            fullName: fullName,
+                            specialty: specialty,
+                            networkImage: validNetworkImage,
+                            onTap: () async {
+                              if (_isLoadingDoctor) return;
+                              setState(() => _isLoadingDoctor = true);
+
+                              final fullDoctor = await AppointementService()
+                                  .getDoctor(id: doctor['id'].toString());
+                              final allServices = await AppointementService()
+                                  .getServices(id: doctor['id'].toString());
+
+                              if (mounted) {
+                                setState(() => _isLoadingDoctor = false);
+                                if (fullDoctor != null) {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => DoctorPage(
+                                        doctor: fullDoctor,
+                                        services: allServices,
+                                      ),
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                          );
                         },
-                      );
-                    },
-                  ),
+                      ),
+              ),
+            ],
           ),
+
+          // Full page loading overlay
+          if (_isLoadingDoctor)
+            Container(
+              color: Colors.black.withOpacity(0.4),
+              child: const Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFF2463EB),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -171,7 +189,7 @@ class _SearchForDoctorInSpecialityState
     final trimmed = value.trim();
     if (trimmed.isEmpty) return;
 
-    final parts = trimmed.split(RegExp(r'\s+')); // handles multiple spaces
+    final parts = trimmed.split(RegExp(r'\s+'));
     final firstName = _capitalize(parts[0]);
     final lastName = parts.length > 1 ? _capitalize(parts[1]) : null;
 
@@ -192,9 +210,8 @@ class _SearchForDoctorInSpecialityState
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final fieldFill = isDark
-        ? const Color(0xFF1E1E1E)
-        : const Color(0xFFF3F4F6);
+    final fieldFill =
+        isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF3F4F6);
     final textColor = isDark ? Colors.white : Colors.black;
 
     return TextFormField(

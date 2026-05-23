@@ -4,12 +4,12 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mediora/Network/networkServices.dart';
 import 'package:mediora/block_0/pages/signin_with_hellopage/policies.dart';
 import 'package:mediora/block_0/pages/signin_with_hellopage/sign_in.dart';
-import 'package:mediora/block_5/pages/FAQ_page.dart';
-import 'package:mediora/block_5/pages/change_password_page.dart';
-import 'package:mediora/block_5/pages/delete_account_page.dart';
-import 'package:mediora/block_5/pages/edit_profile_page.dart';
-import 'package:mediora/block_5/pages/notification_modes_page.dart';
-import 'package:mediora/block_5/tools/themeProvider.dart';
+import 'package:mediora/block_4/pages/FAQ_page.dart';
+import 'package:mediora/block_4/pages/change_password_page.dart';
+import 'package:mediora/block_4/pages/delete_account_page.dart';
+import 'package:mediora/block_4/pages/edit_profile_page.dart';
+import 'package:mediora/block_4/pages/notification_modes_page.dart';
+import 'package:mediora/block_4/tools/themeProvider.dart';
 import 'package:provider/provider.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -289,6 +289,10 @@ class _ProfilePictureCustomState extends State<ProfilePictureCustom> {
                   MaterialPageRoute(builder: (_) => const EditProfilePage()),
                 );
                 _reloadPicture();
+                 if (context.mounted) {
+                    final state = context.findAncestorStateOfType<_ProfilePageState>();
+                    state?._loadUserData();
+                  }
               },
               child: Icon(Icons.edit, color: Colors.white, size: 14.r),
             ),

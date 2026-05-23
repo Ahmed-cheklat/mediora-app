@@ -6,7 +6,7 @@ import 'package:mediora/block_0/pages/signin_with_hellopage/sign_in.dart';
 import 'package:mediora/block_1/pages%20/homePage.dart';
 // import 'package:mediora/block_0/pages/forget_password/rest_passwrod.dart';
 // import 'package:mediora/block_0/pages/sign_up/password.dart';
-import 'package:mediora/block_5/pages/delete_account_page.dart';
+import 'package:mediora/block_4/pages/delete_account_page.dart';
 import 'package:mediora/tools.dart';
 
 class ChangePasswordPage extends StatefulWidget {

@@ -1,8 +1,13 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as latest;
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class NotiService {
+  static final NotiService _instance = NotiService._internal();
+  factory NotiService() => _instance;
+  NotiService._internal();
+
   final notifcationPlugin = FlutterLocalNotificationsPlugin();
   bool _isInitialized = false;
   bool get isInitialized => _isInitialized;
@@ -14,8 +19,6 @@ class NotiService {
     //INITIALIZE THE timezone
     latest.initializeTimeZones();
     tz.setLocalLocation(tz.getLocation("Africa/Algiers"));
-
-
 
     const initAndroidSettings = AndroidInitializationSettings(
       '@mipmap/ic_launcher',
@@ -71,7 +74,7 @@ class NotiService {
   }) async {
     //Get the current Date/Time in device's local timezone
     final now = tz.TZDateTime.now(tz.local);
-  //   // Specific the time by hours and minutes
+    //   // Specific the time by hours and minutes
     var scheduledDate = tz.TZDateTime(
       tz.local,
       now.year,
@@ -80,7 +83,7 @@ class NotiService {
       hour,
       minute,
     );
-  //   // Schedule the notification
+    //   // Schedule the notification
     await notifcationPlugin.zonedSchedule(
       id: id,
       title: title,
@@ -91,19 +94,25 @@ class NotiService {
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
     );
   }
+
+  Future<void> scheduleNotificationAtDate({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime dateTime,
+  }) async {
+    final scheduledDate = tz.TZDateTime.from(dateTime, tz.local);
+    await notifcationPlugin.zonedSchedule(
+      id: id,
+      title: title,
+      body: body,
+      scheduledDate: scheduledDate,
+      notificationDetails: notificationDetails(),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+    );
+  }
+
+  Future<void> cancelNotification({required int id}) async {
+    await notifcationPlugin.cancel(id: id);
+  }
 }
-
-
-//formule of a schedule notification is  : 
-//  ElevatedButton(
-//               onPressed: () {
-                
-//                 NotiService().scheduleNotifications(
-//                   title: 'Title',
-//                   body: 'Body',
-//                   hour: DateTime.now().hour,
-//                   minute: DateTime.now().minute + 1,
-//                 );
-//               },
-//               child: Text('Schedule notifcation'),
-//             ),

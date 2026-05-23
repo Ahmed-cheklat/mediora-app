@@ -3,8 +3,89 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:mediora/block_0/pages/signin_with_hellopage/policies.dart';
 import 'package:mediora/block_0/pages/signin_with_hellopage/sign_in.dart';
 
-class StartPage extends StatelessWidget {
+class StartPage extends StatefulWidget {
   const StartPage({super.key});
+
+  @override
+  State<StartPage> createState() => _StartPageState();
+}
+
+class _StartPageState extends State<StartPage> with TickerProviderStateMixin {
+  late AnimationController _launchController;
+  late AnimationController _buttonController;
+
+  late Animation<double> _fadeAnimation;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _buttonFadeAnimation;
+  late Animation<Offset> _buttonSlideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Launch animation: fade + scale
+    _launchController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _launchController, curve: Curves.easeIn),
+    );
+
+    _scaleAnimation = Tween<double>(begin: 0.7, end: 1).animate(
+      CurvedAnimation(parent: _launchController, curve: Curves.easeOutBack),
+    );
+
+    // Button animation: fade + slide up (delayed)
+    _buttonController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+
+    _buttonFadeAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _buttonController, curve: Curves.easeIn),
+    );
+
+    _buttonSlideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(parent: _buttonController, curve: Curves.easeOut),
+    );
+
+    // Start launch animation, then trigger button animation
+    _launchController.forward().then((_) => _buttonController.forward());
+  }
+
+  @override
+  void dispose() {
+    _launchController.dispose();
+    _buttonController.dispose();
+    super.dispose();
+  }
+
+  void _navigateToSignIn() {
+  Navigator.push(
+    context,
+    PageRouteBuilder(
+      pageBuilder: (_, animation, __) => const SignIn(),
+      transitionDuration: const Duration(milliseconds: 600),
+      transitionsBuilder: (_, animation, __, child) {
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.08), // subtle slide from slightly below
+              end: Offset.zero,
+            ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+            child: child,
+          ),
+        );
+      },
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
@@ -13,99 +94,92 @@ class StartPage extends StatelessWidget {
         child: Column(
           children: [
             20.verticalSpace,
-
-            // Centered content
             Expanded(
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     48.verticalSpace,
-                    _Mediora_Icon(),
+
+                    // Logo: fade + scale
+                    FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: ScaleTransition(
+                        scale: _scaleAnimation,
+                        child: Image.asset(
+                          "assets/icon.png",
+                          height: 200.r,
+                          width: 200.r,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
                     10.verticalSpace,
-                    Text(
-                      "Mediora",
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 30.sp,
-                        fontFamily: "LineSeedJP",
+
+                    // Title: same fade
+                    FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: Text(
+                        "Mediora",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 30.sp,
+                          fontFamily: "LineSeedJP",
+                        ),
                       ),
                     ),
                     200.verticalSpace,
 
-                    Start_Button(),
+                    // Button: delayed fade + slide up
+                    FadeTransition(
+                      opacity: _buttonFadeAnimation,
+                      child: SlideTransition(
+                        position: _buttonSlideAnimation,
+                        child: SizedBox(
+                          width: 216.w,
+                          child: ElevatedButton(
+                            onPressed: _navigateToSignIn,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF2463EB),
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.symmetric(vertical: 15.h),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30).r,
+                              ),
+                              elevation: 10,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Start',
+                                  style: TextStyle(
+                                    fontSize: 18.sp,
+                                    fontFamily: "LINESeedJP",
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                15.horizontalSpace,
+                                Icon(Icons.arrow_forward_rounded, size: 30.sp),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
-            // Responsive spacing
-            SizedBox(height: 80.h), // 10% of screen height
-            // Policy links
-            PolicyLink(text: 'Cookies and Privacy policy', widget: Policies()),
-
-            20.verticalSpace, // Bottom padding
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-//Icon of Mediora
-// ignore: camel_case_types
-class _Mediora_Icon extends StatelessWidget {
-  const _Mediora_Icon();
-
-  @override
-  Widget build(BuildContext context) {
-    return Image.asset(
-      "assets/icon.png",
-      height: 200.r,
-      width: 200.r,
-      fit: BoxFit.contain,
-    );
-  }
-}
-
-// Start button design
-// ignore: camel_case_types
-class Start_Button extends StatelessWidget {
-  const Start_Button({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 216.w, // 60% of screen width
-      child: ElevatedButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => SignIn()),
-          );
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF2463EB),
-          foregroundColor: Colors.white,
-          padding: EdgeInsets.symmetric(vertical: 15.h),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30).r,
-          ),
-          elevation: 10,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            30.verticalSpace,
-            Text(
-              'Start',
-              style: TextStyle(
-                fontSize: 18.sp,
-                fontFamily: "LINESeedJP",
-                fontWeight: FontWeight.w700,
+            SizedBox(height: 80.h),
+            FadeTransition(
+              opacity: _buttonFadeAnimation,
+              child: PolicyLink(
+                text: 'Cookies and Privacy policy',
+                widget: Policies(),
               ),
             ),
-            15.horizontalSpace,
-            Icon(Icons.arrow_forward_rounded, size: 30.sp),
+            20.verticalSpace,
           ],
         ),
       ),
@@ -113,7 +187,6 @@ class Start_Button extends StatelessWidget {
   }
 }
 
-// policy link and terms and cookies
 class PolicyLink extends StatelessWidget {
   final String text;
   final Widget widget;
@@ -122,12 +195,10 @@ class PolicyLink extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return TextButton(
-      onPressed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => widget),
-        );
-      },
+      onPressed: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => widget),
+      ),
       child: Text(
         text,
         style: TextStyle(

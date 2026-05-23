@@ -4,17 +4,33 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:cloudinary_public/cloudinary_public.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 
 class AuthResult {
   final bool success;
   final String message;
   final String? token;
+  final String? refreshToken;
 
-  AuthResult({required this.success, required this.message, this.token});
+  AuthResult({
+    required this.success,
+    required this.message,
+    this.token,
+    this.refreshToken,
+  });
+}
+
+class Result {
+  final bool success;
+  final String message;
+  final String? token;
+
+  Result({required this.success, required this.message, this.token});
 }
 
 class AuthService {
@@ -190,7 +206,8 @@ class AuthService {
         Uri.parse('$_baseUrl/auth/verify-email?code=$otp&email=$email'),
         headers: {'Content-Type': 'application/json'},
       );
-
+      print('verifyEmail status: ${response.statusCode}');
+      print('verifyEmail full response: ${response.body}');
       if (response.statusCode == 200) {
         print('verifyEmail full response: ${response.body}');
         final data = jsonDecode(response.body);
@@ -201,6 +218,7 @@ class AuthService {
         );
       }
       if (response.statusCode == 400) {
+        print(response.statusCode);
         return AuthResult(success: false, message: "Invalid OTP code");
       }
       if (response.statusCode == 401) {
@@ -290,6 +308,8 @@ class AuthService {
         }),
       );
 
+      print("Stuts code of sign up : ${response.statusCode}");
+      print("body of sign up : ${response.body}");
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
         final prefs = await SharedPreferences.getInstance();
@@ -464,7 +484,7 @@ class AuthService {
           message: "Reset code sent to your email",
         );
       }
-      if (response.statusCode == 404) {
+      if (response.statusCode == 404 || response.statusCode == 401) {
         return AuthResult(success: false, message: "Email not found");
       }
       if (response.statusCode == 500) {
@@ -652,6 +672,85 @@ class AuthService {
       return AuthResult(success: false, message: "No internet connection");
     }
   }
+
+  //-------------------------
+  Future<AuthResult> signInWithGoogle() async {
+    try {
+      final uri = Uri.parse('$_baseUrl/auth/google');
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        // Token will arrive via deep link — return pending state
+        return AuthResult(success: true, message: "Opening Google Sign-In...");
+      }
+      return AuthResult(success: false, message: "Could not open browser");
+    } catch (e) {
+      print('Google Sign-In error: $e');
+      return AuthResult(success: false, message: "No internet connection");
+    }
+  }
+
+  //for app google sign in
+  // Future<AuthResult> googleSignIn() async {
+  //   try {
+  //     final googleUser = await GoogleSignIn.instance.signIn();
+  //     if (googleUser == null) {
+  //       return AuthResult(success: false, message: "Sign-in cancelled");
+  //     }
+
+  //     final googleAuth = await googleUser.authentication;
+  //     final String? idToken = googleAuth.idToken;
+
+  //     if (idToken == null) {
+  //       return AuthResult(success: false, message: "Failed to get ID token");
+  //     }
+
+  //     final response = await http.post(
+  //       Uri.parse('$_baseUrl/auth/google'),
+  //       headers: {'Content-Type': 'application/json', 'id-token': idToken},
+  //     );
+
+  //     if (response.statusCode == 200 || response.statusCode == 201) {
+  //       const secureStorage = FlutterSecureStorage();
+
+  //       final String? accessToken = response.headers['access_token'];
+  //       final String? refreshToken = response.headers['refresh_token'];
+  //       final String? deviceIdCookie = _extractCookieValue(
+  //         response.headers['set-cookie'] ?? '',
+  //         'device_id',
+  //       );
+
+  //       if (accessToken != null) {
+  //         await secureStorage.write(key: 'access_token', value: accessToken);
+  //       }
+  //       if (refreshToken != null) {
+  //         await secureStorage.write(key: 'refresh_token', value: refreshToken);
+  //       }
+  //       if (deviceIdCookie != null) {
+  //         await secureStorage.write(key: 'device_id', value: deviceIdCookie);
+  //       }
+
+  //       return AuthResult(success: true, message: "Welcome!");
+  //     }
+
+  //     if (response.statusCode == 401) {
+  //       return AuthResult(
+  //         success: false,
+  //         message: "Unauthorized Google account",
+  //       );
+  //     }
+  //     if (response.statusCode == 500) {
+  //       return AuthResult(
+  //         success: false,
+  //         message: "Server error, try again later",
+  //       );
+  //     }
+
+  //     return AuthResult(success: false, message: "Something went wrong");
+  //   } catch (e) {
+  //     print('Google SignIn error: $e');
+  //     return AuthResult(success: false, message: "Google sign-in failed");
+  //   }
+  // }
 }
 //---------------------------
 
@@ -715,8 +814,6 @@ class AppointementService {
     }
   }
 
-  ////////////////////////////////////
-  //Get information of a speicif doctor
   Future<Map<String, dynamic>?> getDoctor({required String id}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -785,6 +882,236 @@ class AppointementService {
       return null;
     }
   }
+
+  //check if the doctor is free :
+  Future<Result> doctorIsFree({
+    required String serviceId,
+    required String date,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? accessToken = prefs.getString('access_token');
+
+      final uri = Uri.parse(
+        '$_baseUrl/doctors/is-free?service_id=$serviceId&date=$date',
+      );
+
+      final response = await http.get(
+        Uri.parse('$_baseUrl/doctors/is-free?service_id=$serviceId&date=$date'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (accessToken != null) 'Authorization': 'Bearer $accessToken',
+        },
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        print('Code of doctorIsFree : $data');
+
+        if (data is Map && data['message'] != null) {
+          final message = data['message'].toString().trim().toLowerCase();
+          if (message.contains('free')) {
+            return Result(success: true, message: 'Can appoint');
+          }
+          return Result(success: false, message: 'Cannot appoint');
+        }
+
+        return Result(success: false, message: 'Unexpected response format');
+      }
+      if (response.statusCode == 401) {
+        final refreshed = await AuthService().getRefreshToken();
+        if (refreshed.success) {
+          return await doctorIsFree(serviceId: serviceId, date: date);
+        }
+      }
+      print('error: ${response.statusCode} - ${response.body}');
+      return Result(success: false, message: 'Something went wrong');
+    } catch (e) {
+      print(e);
+      return Result(success: false, message: 'No internet connection');
+    }
+  }
+
+  //get doctor time off
+  Future<Result> doctorTimeOffs({required String id}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? accessToken = prefs.getString('access_token');
+
+      final response = await http.get(
+        Uri.parse('$_baseUrl/doctors/timeoffs'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (accessToken != null) 'Authorization': 'Bearer $accessToken',
+        },
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        print('Time of rest of the doctor : $data');
+        return Result(success: true, message: 'doctor is free gotten');
+      }
+      if (response.statusCode == 401) {
+        final refreshed = await AuthService().getRefreshToken();
+        if (refreshed.success) {
+          return await doctorTimeOffs(id: id);
+        }
+      }
+      print('error: ${response.statusCode} - ${response.body}');
+      return Result(success: false, message: 'Something went wrong');
+    } catch (e) {
+      print(e);
+      return Result(success: false, message: 'No internet connection');
+    }
+  }
+
+  //Make an appointment
+  Future<Result> makeAppointement({
+    required String serviceId,
+    required String date,
+    required String id,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? accessToken = prefs.getString('access_token');
+
+      final response = await http.post(
+        Uri.parse('$_baseUrl/appointments/'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (accessToken != null) 'Authorization': 'Bearer $accessToken',
+        },
+        body: jsonEncode({'service_id': serviceId, 'date': date}),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        final url = data['data']?['url']?.toString();
+        print('Payment URL: $url');
+        return Result(
+          success: true,
+          message: url ?? '',
+        ); // url stored in message field
+      }
+      if (response.statusCode == 400) {
+        final data = jsonDecode(response.body);
+        final detail = data['detail']?.toString() ?? 'Something went wrong';
+        print('Error 400: $detail');
+        return Result(success: false, message: detail);
+      }
+      if (response.statusCode == 401) {
+        final refreshed = await AuthService().getRefreshToken();
+        if (refreshed.success) {
+          return await makeAppointement(
+            serviceId: serviceId,
+            date: date,
+            id: id,
+          );
+        }
+      }
+      print('Error: ${response.statusCode} - ${response.body}');
+      return Result(success: false, message: 'Something went wrong');
+    } catch (e) {
+      print(e);
+      return Result(success: false, message: 'Something went wrong');
+    }
+  }
+
+  //Days of work
+  Future<List<dynamic>> daysAndTimeOfWork({required String id}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? accessToken = prefs.getString('access_token');
+
+      final response = await http.get(
+        // GET not POST
+        Uri.parse('$_baseUrl/doctors/$id/schedule'), // confirm URL with backend
+        headers: {
+          'Content-Type': 'application/json',
+          if (accessToken != null) 'Authorization': 'Bearer $accessToken',
+        },
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        print("Schedule data: $data");
+        final list = data['data'];
+        return list is List ? list : [];
+      }
+      if (response.statusCode == 401) {
+        final refreshed = await AuthService().getRefreshToken();
+        if (refreshed.success) return await daysAndTimeOfWork(id: id);
+      }
+      return [];
+    } catch (e) {
+      print('daysAndTimeOfWork error: $e');
+      return [];
+    }
+  }
+
+  //Get user's appointments
+  Future<List<dynamic>> getUserAppointment({
+    required int page,
+    required int limit,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? accessToken = prefs.getString('access_token');
+
+      final response = await http.get(
+        Uri.parse(
+          '$_baseUrl/appointments?status=scheduled&page=$page&limit=$limit',
+        ),
+        headers: {
+          'Content-Type': 'application/json',
+          if (accessToken != null) 'Authorization': 'Bearer $accessToken',
+        },
+      );
+      print(response.body);
+      print(response.statusCode);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final list = data["data"];
+        return list is List ? list : [];
+      }
+      if (response.statusCode == 401) {
+        final result = AuthService().getRefreshToken();
+      }
+      return [];
+    } catch (e) {
+      print('Network Error: $e');
+      return [];
+    }
+  }
+
+  // Cancel an appointment
+  Future<Result> cancelAppointement({required String id}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? accessToken = prefs.getString('access_token');
+
+      final response = await http.delete(
+        Uri.parse('$_baseUrl/appointments/$id/cancel'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (accessToken != null) 'Authorization': 'Bearer $accessToken',
+        },
+      );
+      if (response.statusCode == 200 ||
+          response.statusCode == 201 ||
+          response.statusCode == 204) {
+        return Result(
+          success: true,
+          message: "appointment canceled successfully",
+        );
+      } else {
+        return Result(success: false, message: "Something went wrong");
+      }
+    } catch (e) {
+      print('Something went wrong $e');
+      return Result(success: false, message: "something went wrong");
+    }
+  }
 }
 //---------------------------
 
@@ -820,7 +1147,7 @@ class UserServices {
         await secureStorage.write(key: 'picture', value: picture);
         print('Picture saved from getUser: $picture');
 
-  return userData;
+        return userData;
       } else {
         // Handle non-200 responses
         throw Exception(
@@ -892,9 +1219,7 @@ class UserServices {
       final prefs = await SharedPreferences.getInstance();
       final String? accessToken = prefs.getString('access_token');
 
-      // 1. Upload to Cloudinary
       final cloudinary = CloudinaryPublic('dc7qsxfpb', 'tcs7z4na');
-
       final cloudinaryResponse = await cloudinary.uploadFile(
         CloudinaryFile.fromFile(
           image.path,
@@ -902,11 +1227,11 @@ class UserServices {
         ),
       );
 
-      // 2. Send metadata to your backend
-      final response = await http.post(
-        Uri.parse(
-          '$_baseUrl/users/profile',
-        ), // confirm endpoint with backend dev
+      final cloudinaryUrl =
+          cloudinaryResponse.secureUrl; // ← save before backend call
+
+      await http.post(
+        Uri.parse('$_baseUrl/users/profile'),
         headers: {
           'Content-Type': 'application/json',
           if (accessToken != null) 'Authorization': 'Bearer $accessToken',
@@ -915,25 +1240,42 @@ class UserServices {
           'public_id': cloudinaryResponse.publicId,
           'format': 'jpg',
           'resource_type': 'image',
-          'secure_url': cloudinaryResponse.secureUrl,
+          'secure_url': cloudinaryUrl,
         }),
       );
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = jsonDecode(response.body);
-        return data['secure_url'] as String?;
-      }
-
-      if (response.statusCode == 401) {
-        final refreshed = await AuthService().getRefreshToken();
-        if (refreshed.success) return await uploadProfilePicture(image);
-        return null;
-      }
-
-      return null;
+      return cloudinaryUrl; // ← always return Cloudinary URL regardless of backend
     } catch (e) {
-      print('Upload profile picture error: $e');
+      print('Upload error: $e');
       return null;
     }
   }
+
+  //add phone numbe
+  Future<bool> addPhoneNumber(String phoneNumber) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? accessToken = prefs.getString('access_token');
+
+      final response = await http.patch(
+        Uri.parse('$_baseUrl/users/me'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (accessToken != null) 'Authorization': 'Bearer $accessToken',
+        },
+        body: jsonEncode({"phone": phoneNumber}), // was missing { }
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('Phone added successfully ');
+        return true;
+      } else {
+        print('Something went wrong ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      print("Something went wrong $e");
+      return false;
+    }
+  }
 }
+

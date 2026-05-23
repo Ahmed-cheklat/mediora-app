@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:mediora/block_0/pages/forget_password/validation_gmail_for_forget_password.dart';
-import 'package:mediora/block_5/pages/profile_page.dart';
+import 'package:mediora/block_4/pages/profile_page.dart';
 
 final List<String> deletionReasons = [
   'I have a duplicate account',

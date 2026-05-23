@@ -2,23 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:health_icons/health_icons.dart';
 
 final List<Map<String, dynamic>> specialties = [
-  {"specialty": "general practice", "icon": HealthIcons.stethoscopeFilled},
-  {"specialty": "family medicine", "icon": HealthIcons.peopleFilled},
-  {"specialty": "internal medicine", "icon": HealthIcons.stomachFilled},
-  {"specialty": "pediatrics", "icon": HealthIcons.childCareFilled},
-  {"specialty": "emergency medicine", "icon": HealthIcons.ambulanceFilled},
+  {"specialty": "generaliste", "icon": HealthIcons.stethoscopeFilled},
+  {"specialty": "gynecology", "icon": HealthIcons.pregnantFilled},
   {"specialty": "cardiology", "icon": HealthIcons.heartCardiogramFilled},
-  {"specialty": "dermatology", "icon": HealthIcons.allergiesFilled},
+  {"specialty": "general Surgery", "icon": HealthIcons.generalSurgeryFilled},
+  {"specialty": "dentistry", "icon": HealthIcons.toothFilled},
+  {"specialty": "urology", "icon": HealthIcons.urologyFilled},
   {"specialty": "neurology", "icon": HealthIcons.neurologyFilled},
-  {"specialty": "psychiatry", "icon": HealthIcons.psychologyFilled},
-  {"specialty": "general surgery", "icon": HealthIcons.generalSurgeryFilled},
-  {"specialty": "orthopedic surgery", "icon": HealthIcons.orthopaedicsFilled},
-  {"specialty": "obstetrics and gynecology", "icon": HealthIcons.pregnantFilled},
+  {"specialty": "nephrology", "icon": HealthIcons.urologyFilled},
+  {"specialty": "oRL", "icon": HealthIcons.earFilled},
   {"specialty": "ophthalmology", "icon": HealthIcons.eyeFilled},
-  {"specialty": "otolaryngology (ent)", "icon": HealthIcons.earFilled},
-  {"specialty": "radiology", "icon": HealthIcons.radiologyFilled},
+  {"specialty": "endocrinology", "icon": HealthIcons.stomachFilled},
+  {"specialty": "dermatology", "icon": HealthIcons.allergiesFilled},
+  {"specialty": "pediatric", "icon": HealthIcons.childCareFilled},
+  {"specialty": "traumatology", "icon": HealthIcons.orthopaedicsFilled},
+  {"specialty": "gastroenterology", "icon": HealthIcons.stomachFilled},
 ];
-
 class SpecialityCard extends StatelessWidget {
   final Map<String, dynamic> specialities;
   final VoidCallback function; 

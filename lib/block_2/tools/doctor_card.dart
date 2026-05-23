@@ -5,16 +5,18 @@ class DoctorCard extends StatelessWidget {
   final String fullName;
   final String specialty;
   final String? assetImage;
-  final String? networkImage; // ← add this
+  final String? networkImage;
   final VoidCallback? onTap;
+  final bool isLoading;  // ← add this
 
   const DoctorCard({
     super.key,
     required this.fullName,
     required this.specialty,
     this.assetImage,
-    this.networkImage, // ← add this
+    this.networkImage,
     this.onTap,
+    this.isLoading = false,  // ← add this
   });
 
   ImageProvider? get _image {
@@ -31,7 +33,7 @@ class DoctorCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final image = _image;
     return GestureDetector(
-      onTap: onTap,
+      onTap: isLoading ? null : onTap,  // ← block tap while loading
       child: Card(
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         child: ListTile(
@@ -52,11 +54,21 @@ class DoctorCard extends StatelessWidget {
             specialty,
             style: TextStyle(color: const Color(0xFF2463EB), fontSize: 12.sp),
           ),
-          trailing: const Icon(
-            Icons.arrow_forward_ios,
-            color: Color(0xFF2463EB),
-            size: 16,
-          ),
+          // ← swap arrow for spinner when loading
+          trailing: isLoading
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Color(0xFF2463EB),
+                  ),
+                )
+              : const Icon(
+                  Icons.arrow_forward_ios,
+                  color: Color(0xFF2463EB),
+                  size: 16,
+                ),
         ),
       ),
     );

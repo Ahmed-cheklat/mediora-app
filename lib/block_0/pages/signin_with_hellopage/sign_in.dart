@@ -108,7 +108,7 @@ class _SignInState extends State<SignIn> {
                       if (!_formKey.currentState!.validate()) return;
 
                       final result = await AuthService().signIn(
-                        email: gmailcontroller.text,
+                        email: gmailcontroller.text.trim(),
                         password: passwordcontroller.text,
                       );
 
@@ -124,8 +124,6 @@ class _SignInState extends State<SignIn> {
                       );
 
                       if (result.success) {
-                      
-                        // ignore: use_build_context_synchronously
                         Navigator.pushAndRemoveUntil(
                           // ignore: use_build_context_synchronously
                           context,
@@ -161,7 +159,19 @@ class _SignInState extends State<SignIn> {
                     ],
                   ),
                   20.verticalSpace,
-                  SignInWithGoogleButton(),
+                  SignInWithGoogleButton(
+                    function: () async {
+                      final result = await AuthService().signInWithGoogle();
+                      if (!result.success) {
+                        CustomSnackBarForSignIn.show(
+                          context,
+                          message: result.message,
+                          icon: Icons.error,
+                          backgroundColor: Colors.red,
+                        );
+                      }
+                    },
+                  ),
                   30.verticalSpace,
 
                   Row(
@@ -218,17 +228,20 @@ class GmailField extends StatelessWidget {
         final domainPart = parts[1];
 
         if (localPart.isEmpty) return "Invalid email address";
-        if (localPart.startsWith('.') || localPart.endsWith('.'))
+        if (localPart.startsWith('.') || localPart.endsWith('.')) {
           return "Invalid email address";
+        }
         if (localPart.contains('..')) return "Invalid email address";
 
         if (!domainPart.endsWith('.com')) return "Invalid email address";
-        if (domainPart.startsWith('.') || domainPart.endsWith('.'))
+        if (domainPart.startsWith('.') || domainPart.endsWith('.')) {
           return "Invalid email address";
+        }
         if (domainPart.contains('..')) return "Invalid email address";
 
-        if (!RegExp(r'^[\w\-\.]+@([\w\-]+\.)+com$').hasMatch(trimmed))
+        if (!RegExp(r'^[\w\-\.]+@([\w\-]+\.)+com$').hasMatch(trimmed)) {
           return "Invalid email address";
+        }
 
         final blockedDomains = [
           'test.com',
@@ -381,13 +394,13 @@ class SignInButton extends StatefulWidget {
 }
 
 class _SignInButtonState extends State<SignInButton> {
-  bool _isLoading = false; 
+  bool _isLoading = false;
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed:_isLoading
+        onPressed: _isLoading
             ? null
             : () async {
                 setState(() => _isLoading = true);
@@ -406,7 +419,7 @@ class _SignInButtonState extends State<SignInButton> {
           ),
           elevation: 10,
         ),
-        child:_isLoading
+        child: _isLoading
             ? SizedBox(
                 height: 20.r,
                 width: 20.r,
@@ -415,16 +428,15 @@ class _SignInButtonState extends State<SignInButton> {
                   strokeWidth: 2.5,
                 ),
               )
-            : 
-         Text(
-          "Sign in",
-          style: TextStyle(
-            fontWeight: FontWeight.w400,
-            fontFamily: "LineSeedJP",
-            fontSize: 16.sp,
-            color: Colors.white,
-          ),
-        ),
+            : Text(
+                "Sign in",
+                style: TextStyle(
+                  fontWeight: FontWeight.w400,
+                  fontFamily: "LineSeedJP",
+                  fontSize: 16.sp,
+                  color: Colors.white,
+                ),
+              ),
       ),
     );
   }
@@ -432,14 +444,15 @@ class _SignInButtonState extends State<SignInButton> {
 
 // SignIn with Google Button
 class SignInWithGoogleButton extends StatelessWidget {
-  const SignInWithGoogleButton({super.key});
+  final Future<void> Function() function;
+  const SignInWithGoogleButton({super.key, required this.function});
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: () {},
+        onPressed: function,
         style: ElevatedButton.styleFrom(
           backgroundColor: Color(0xFFDBDADA),
           foregroundColor: Colors.white,
@@ -515,8 +528,9 @@ class GmailFieldForSignIn extends StatelessWidget {
       keyboardType: TextInputType.emailAddress,
       autofillHints: const [AutofillHints.email],
       validator: (value) {
-        if (value == null || value.isEmpty)
+        if (value == null || value.isEmpty) {
           return "Email or username is required";
+        }
 
         final trimmed = value.trim();
 
@@ -530,19 +544,23 @@ class GmailFieldForSignIn extends StatelessWidget {
           final localPart = parts[0];
           final domainPart = parts[1];
 
-          if (localPart.isEmpty || domainPart.isEmpty)
+          if (localPart.isEmpty || domainPart.isEmpty) {
             return "Invalid email address";
-          if (localPart.startsWith('.') || localPart.endsWith('.'))
+          }
+          if (localPart.startsWith('.') || localPart.endsWith('.')) {
             return "Invalid email address";
+          }
           if (localPart.contains('..')) return "Invalid email address";
 
           if (!domainPart.endsWith('.com')) return "Invalid email address";
-          if (domainPart.startsWith('.') || domainPart.endsWith('.'))
+          if (domainPart.startsWith('.') || domainPart.endsWith('.')) {
             return "Invalid email address";
+          }
           if (domainPart.contains('..')) return "Invalid email address";
 
-          if (!RegExp(r'^[\w\-\.]+@([\w\-]+\.)+com$').hasMatch(trimmed))
+          if (!RegExp(r'^[\w\-\.]+@([\w\-]+\.)+com$').hasMatch(trimmed)) {
             return "Invalid email address";
+          }
 
           final blockedDomains = [
             'test.com',
@@ -550,8 +568,9 @@ class GmailFieldForSignIn extends StatelessWidget {
             'fake.com',
             'dummy.com',
           ];
-          if (blockedDomains.contains(domainPart.toLowerCase()))
+          if (blockedDomains.contains(domainPart.toLowerCase())) {
             return "Invalid email address";
+          }
         } else {
           // ── USERNAME VALIDATION ───────────────────────────────
 
@@ -559,19 +578,23 @@ class GmailFieldForSignIn extends StatelessWidget {
           if (trimmed.length > 30) return "Invalid username";
 
           // Only lowercase letters, digits, underscores, and dots
-          if (!RegExp(r'^[a-z0-9._]+$').hasMatch(trimmed))
+          if (!RegExp(r'^[a-z0-9._]+$').hasMatch(trimmed)) {
             return "Invalid username";
+          }
 
-          if (trimmed.startsWith('.') || trimmed.startsWith('_'))
+          if (trimmed.startsWith('.') || trimmed.startsWith('_')) {
             return "Invalid username";
-          if (trimmed.endsWith('.') || trimmed.endsWith('_'))
+          }
+          if (trimmed.endsWith('.') || trimmed.endsWith('_')) {
             return "Invalid username";
+          }
 
           if (trimmed.contains('..') ||
               trimmed.contains('__') ||
               trimmed.contains('._') ||
-              trimmed.contains('_.'))
+              trimmed.contains('_.')) {
             return "Invalid username";
+          }
 
           // Must contain at least one letter
           if (!RegExp(r'[a-z]').hasMatch(trimmed)) return "Invalid username";

@@ -309,8 +309,6 @@ class CustomSnackBarForSignUp {
 
 //---------------------------------------------------------
 
-
-
 //---------------------------------------------------------
 class PasswordPage extends StatefulWidget {
   final PasswordFlow flow;
@@ -318,7 +316,7 @@ class PasswordPage extends StatefulWidget {
   final String firstName;
   final String lastName;
   final String username;
-  final String token; 
+  final String token;
   const PasswordPage({
     super.key,
     required this.flow,
@@ -419,102 +417,88 @@ class _PasswordPageState extends State<PasswordPage> {
 
                   CustomButton(
                     function: () async {
-                    // 1. Validate form
-                    if (!_formKey.currentState!.validate()) return;
-                    final error = validatePasswords(passwordcontroller, confirmcontroller);
-                    if (error != null) {
-                      CustomSnackBarForSignUp.show(
-                        context,
-                        message: error,
-                        backgroundColor: Colors.red,
-                        icon: Icons.error_outline,
+                      if (_isLoading) return; 
+                      // 1. Validate form
+                      if (!_formKey.currentState!.validate()) return;
+                      final error = validatePasswords(
+                        passwordcontroller,
+                        confirmcontroller,
                       );
-                      return;
-                    }
+                      if (error != null) {
+                        CustomSnackBarForSignUp.show(
+                          context,
+                          message: error,
+                          backgroundColor: Colors.red,
+                          icon: Icons.error_outline,
+                        );
+                        return;
+                      }
 
-                    // 2. Start loading
-                    setState(() => _isLoading = true);
+                      // 2. Start loading
+                      setState(() => _isLoading = true);
 
-                    // 3. Create auth service instance (reuse)
-                    final authService = AuthService();
+                      // 3. Create auth service instance (reuse)
+                      final authService = AuthService();
 
-                    // 4. Perform sign up
-                    final result = await authService.SignUp(
-                      firstName: widget.firstName,
-                      lastName: widget.lastName,
-                      username: widget.username,
-                      email: widget.email,
-                      password: passwordcontroller.text,
-                      creationToken: widget.token,
-                    );
+                      // 4. Perform sign up
+                      final result = await authService.SignUp(
+                        firstName: widget.firstName,
+                        lastName: widget.lastName,
+                        username: widget.username,
+                        email: widget.email,
+                        password: passwordcontroller.text,
+                        creationToken: widget.token,
+                      );
 
-                    if (!mounted) return;
+                      if (!mounted) return;
 
-                    // 5. Handle sign up failure
-                    if (!result.success) {
+                      // 5. Handle sign up failure
+                      if (!result.success) {
+                        setState(() => _isLoading = false);
+                        CustomSnackBarForSignUp.show(
+                          context,
+                          message: result.message,
+                          icon: Icons.error,
+                          backgroundColor: Colors.red,
+                        );
+                        return;
+                      }
+
+                      // 6. Sign up succeeded → get refresh token
+
                       setState(() => _isLoading = false);
-                      CustomSnackBarForSignUp.show(
-                        context,
-                        message: result.message,
-                        icon: Icons.error,
-                        backgroundColor: Colors.red,
-                      );
-                      return;
-                    }
-
-                    // 6. Sign up succeeded → get refresh token
-                    final refreshResult = await authService.getRefreshToken();
-
-                    if (!mounted) return;
-                    setState(() => _isLoading = false);
-
-                    // 7. Handle refresh token result
-                    if (refreshResult.success) {
-                      // Both tokens saved → proceed
                       Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(builder: (context) => NumberAdding()),
-                        (route) => false,
-                      );
-                    } else {
-                      // Refresh token failed – show warning but still allow navigation?
-                      // Better to stay and ask user to sign in manually.
-                      CustomSnackBarForSignUp.show(
-                        context,
-                        message: "Account created but session init failed. Please sign in.",
-                        icon: Icons.warning,
-                        backgroundColor: Colors.orange,
-                      );
-                      // Optionally navigate to login screen instead of NumberAdding
-                      // Navigator.pushReplacementNamed(context, '/login');
-                    }
-                  },
+                      context,
+                      MaterialPageRoute(builder: (context) => NumberAdding()),
+                      (route) => false,
+                    );
+                    },
                     //Design of the button
-                    mywidget: _isLoading ? 
-                     SizedBox(
-                              height: 20.r,
-                              width: 20.r,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2.5,
+                    mywidget: _isLoading
+                        ? SizedBox(
+                            height: 20.r,
+                            width: 20.r,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2.5,
+                            ),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                "Next",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w400,
+                                  fontFamily: "LineSeedJP",
+                                  fontSize: 16.sp,
+                                  color: Colors.white,
+                                ),
                               ),
-                            )
-                    : Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          "Next",
-                          style: TextStyle(
-                            fontWeight: FontWeight.w400,
-                            fontFamily: "LineSeedJP",
-                            fontSize: 16.sp,
-                            color: Colors.white,
+                              10.horizontalSpace,
+                              Icon(Icons.arrow_forward, size: 30.r),
+                            ],
                           ),
-                        ),
-                        10.horizontalSpace,
-                        Icon(Icons.arrow_forward, size: 30.r),
-                      ],
-                    ),
                   ),
                 ],
               ),
