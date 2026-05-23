@@ -210,7 +210,6 @@ class _HomepageBodyState extends State<HomepageBody> {
 
   Future<void> _loadDailyAdvice() async {
     final prefs = await SharedPreferences.getInstance();
-    final lastSession = prefs.getString('advice_session_id') ?? '';
     final currentSession = DateTime.now().millisecondsSinceEpoch.toString();
 
     // Always pick new advice on every app session (initState = new session)

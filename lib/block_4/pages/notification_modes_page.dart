@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:mediora/block_4/tools/notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -14,7 +13,6 @@ class NotificationModesPage extends StatefulWidget {
 class _NotificationModesPageState extends State<NotificationModesPage> {
   bool _appointementNotification = false;
   bool _messageNotification = false;
-  bool _isLoading = true;
 
   @override
   void initState() {
