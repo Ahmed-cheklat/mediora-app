@@ -44,7 +44,7 @@ class _BookAndPayPageState extends State<BookAndPayPage> {
   }
 
   // Flutter weekday: Mon=1 ... Sun=7  →  API: Sun=0, Mon=1 ... Sat=6
-  int _toApiDow(DateTime date) => date.weekday % 7;
+  int _toApiDow(DateTime date) => date.weekday - 1;
   List<DateTime> get _next7Days {
     final tomorrow = DateTime.now().add(const Duration(days: 1));
     return List.generate(7, (i) => tomorrow.add(Duration(days: i)));

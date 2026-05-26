@@ -1,8 +1,7 @@
-import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:mediora/block_0/pages/signin_with_hellopage/start_page.dart';
-import 'package:mediora/block_1/pages%20/homePage.dart';
 import 'package:mediora/block_4/tools/notifications.dart';
 import 'package:mediora/block_4/tools/themeProvider.dart';
 import 'package:provider/provider.dart';
@@ -11,6 +10,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   NotiService().initNotifications();
+  await GoogleSignIn.instance.initialize(
+    clientId: '583663368113-vmset5bjhiu86qigf3aur6qaf68sg2u5.apps.googleusercontent.com',
+  );
   final prefs = await SharedPreferences.getInstance();
   runApp(
     ChangeNotifierProvider(
@@ -20,48 +22,8 @@ void main() async {
   );
 }
 
-class MyApp extends StatefulWidget {
+class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
-  @override
-  State<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  final _appLinks = AppLinks();
-  final _navigatorKey = GlobalKey<NavigatorState>();
-
-  @override
-  void initState() {
-    super.initState();
-    _initDeepLinks();
-  }
-
-  void _initDeepLinks() {
-    _appLinks.uriLinkStream.listen((uri) {
-      _handleDeepLink(uri);
-    });
-  }
-
-  void _handleDeepLink(Uri uri) async {
-    if (uri.scheme == 'mediora' && uri.host == 'auth') {
-      final accessToken = uri.queryParameters['access_token'];
-      final refreshToken = uri.queryParameters['refresh_token'];
-
-      if (accessToken != null) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('access_token', accessToken);
-        if (refreshToken != null) {
-          await prefs.setString('refresh_token', refreshToken);
-        }
-
-        _navigatorKey.currentState?.pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => Homepage()),
-          (route) => false,
-        );
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,14 +33,13 @@ class _MyAppState extends State<MyApp> {
       splitScreenMode: true,
       builder: (context, child) => Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) => MaterialApp(
-          navigatorKey: _navigatorKey, // 👈 added
           themeMode: themeProvider.themeMode,
           theme: ThemeData(
             brightness: Brightness.light,
             fontFamily: 'LineSeedJP',
             scaffoldBackgroundColor: const Color(0xFFF2F2F7),
-            appBarTheme: AppBarTheme(
-              backgroundColor: const Color(0xFFF2F2F7),
+            appBarTheme: const AppBarTheme(
+              backgroundColor: Color(0xFFF2F2F7),
               foregroundColor: Colors.black,
               elevation: 0,
               scrolledUnderElevation: 0,
@@ -120,7 +81,7 @@ class _MyAppState extends State<MyApp> {
             ),
           ),
           debugShowCheckedModeBanner: false,
-          home: StartPage(),
+          home: const StartPage(),
         ),
       ),
     );

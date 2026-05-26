@@ -4,11 +4,14 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:cloudinary_public/cloudinary_public.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
+import 'package:web_socket_channel/status.dart' as status;
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 class AuthResult {
   final bool success;
@@ -673,83 +676,73 @@ class AuthService {
   }
 
   //-------------------------
-  Future<AuthResult> signInWithGoogle() async {
-    try {
-      final uri = Uri.parse('$_baseUrl/auth/google');
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-        // Token will arrive via deep link — return pending state
-        return AuthResult(success: true, message: "Opening Google Sign-In...");
-      }
-      return AuthResult(success: false, message: "Could not open browser");
-    } catch (e) {
-      print('Google Sign-In error: $e');
-      return AuthResult(success: false, message: "No internet connection");
-    }
-  }
 
   //for app google sign in
-  // Future<AuthResult> googleSignIn() async {
-  //   try {
-  //     final googleUser = await GoogleSignIn.instance.signIn();
-  //     if (googleUser == null) {
-  //       return AuthResult(success: false, message: "Sign-in cancelled");
-  //     }
+  Future<AuthResult> googleSignIn() async {
+    try {
+      final result = await GoogleSignIn.instance.authenticate();
+      final String? idToken = result.authentication.idToken;
+      print("id token : $idToken");
 
-  //     final googleAuth = await googleUser.authentication;
-  //     final String? idToken = googleAuth.idToken;
+      if (idToken == null) {
+        return AuthResult(success: false, message: "Failed to get ID token");
+      }
 
-  //     if (idToken == null) {
-  //       return AuthResult(success: false, message: "Failed to get ID token");
-  //     }
+      final response = await http.post(
+        Uri.parse('$_baseUrl/auth/google/auth?id_token=$idToken'),
+        headers: {'Content-Type': 'application/json'},
+      );
 
-  //     final response = await http.post(
-  //       Uri.parse('$_baseUrl/auth/google'),
-  //       headers: {'Content-Type': 'application/json', 'id-token': idToken},
-  //     );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('Google SignIn response status: ${response.statusCode}');
+        print('Google SignIn response body: ${response.body}');
+        print('Google SignIn response headers: ${response.headers}');
 
-  //     if (response.statusCode == 200 || response.statusCode == 201) {
-  //       const secureStorage = FlutterSecureStorage();
+        const secureStorage = FlutterSecureStorage();
 
-  //       final String? accessToken = response.headers['access_token'];
-  //       final String? refreshToken = response.headers['refresh_token'];
-  //       final String? deviceIdCookie = _extractCookieValue(
-  //         response.headers['set-cookie'] ?? '',
-  //         'device_id',
-  //       );
+        final String? accessToken = response.headers['access_token'];
+        final String? refreshToken = response.headers['refresh_token'];
+        final String? deviceIdCookie = _extractCookieValue(
+          response.headers['set-cookie'] ?? '',
+          'device_id',
+        );
 
-  //       if (accessToken != null) {
-  //         await secureStorage.write(key: 'access_token', value: accessToken);
-  //       }
-  //       if (refreshToken != null) {
-  //         await secureStorage.write(key: 'refresh_token', value: refreshToken);
-  //       }
-  //       if (deviceIdCookie != null) {
-  //         await secureStorage.write(key: 'device_id', value: deviceIdCookie);
-  //       }
+        if (accessToken != null) {
+          await secureStorage.write(key: 'access_token', value: accessToken);
+        }
+        if (refreshToken != null) {
+          await secureStorage.write(key: 'refresh_token', value: refreshToken);
+        }
+        if (deviceIdCookie != null) {
+          await secureStorage.write(key: 'device_id', value: deviceIdCookie);
+        }
 
-  //       return AuthResult(success: true, message: "Welcome!");
-  //     }
+        return AuthResult(success: true, message: "Welcome!");
+      }
 
-  //     if (response.statusCode == 401) {
-  //       return AuthResult(
-  //         success: false,
-  //         message: "Unauthorized Google account",
-  //       );
-  //     }
-  //     if (response.statusCode == 500) {
-  //       return AuthResult(
-  //         success: false,
-  //         message: "Server error, try again later",
-  //       );
-  //     }
+      if (response.statusCode == 401) {
+        print('Google SignIn unexpected status: ${response.statusCode}');
+        print('Google SignIn response body: ${response.body}');
+        return AuthResult(
+          success: false,
+          message: "Unauthorized Google account",
+        );
+      }
+      if (response.statusCode == 500) {
+        print('Google SignIn unexpected status: ${response.statusCode}');
+        print('Google SignIn response body: ${response.body}');
+        return AuthResult(
+          success: false,
+          message: "Server error, try again later",
+        );
+      }
 
-  //     return AuthResult(success: false, message: "Something went wrong");
-  //   } catch (e) {
-  //     print('Google SignIn error: $e');
-  //     return AuthResult(success: false, message: "Google sign-in failed");
-  //   }
-  // }
+      return AuthResult(success: false, message: "Something went wrong");
+    } catch (e) {
+      print('Google SignIn error: $e');
+      return AuthResult(success: false, message: "Google sign-in failed");
+    }
+  }
 }
 //---------------------------
 
@@ -1278,3 +1271,149 @@ class UserServices {
   }
 }
 
+class ChatServices {
+  static const String _baseUrl = 'https://mediora-back-2.onrender.com';
+
+  //Get contact with latest messages
+  Future<List<dynamic>> getLatestContacts() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? accessToken = prefs.getString('access_token');
+
+      final response = await http.get(
+        Uri.parse('$_baseUrl/chat/contacts/latest'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (accessToken != null) 'Authorization': 'Bearer $accessToken',
+        },
+      );
+
+      print('getLatestContacts status: ${response.statusCode}');
+      print('getLatestContacts body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print("data of conevrsation : $data");
+        return data is List ? data : [];
+      }
+      if (response.statusCode == 401) {
+        final refreshed = await AuthService().getRefreshToken();
+        if (refreshed.success) return await getLatestContacts();
+      }
+      return [];
+    } catch (e) {
+      print('getLatestContacts error: $e');
+      return [];
+    }
+  }
+
+  //get messages for a specific conversation
+  Future<List<dynamic>> getConversationMessages(String id) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? accessToken = prefs.getString('access_token');
+
+      final response = await http.get(
+        Uri.parse('$_baseUrl/chat/conversations/$id/messages'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (accessToken != null) 'Authorization': 'Bearer $accessToken',
+        },
+      );
+
+      print('getConversationMessages status: ${response.statusCode}');
+      print('getConversationMessages body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print('data of conversation: $data');
+        return data is List ? data : [];
+      }
+      if (response.statusCode == 401) {
+        final refreshed = await AuthService().getRefreshToken();
+        if (refreshed.success) return await getConversationMessages(id);
+      }
+      return [];
+    } catch (e) {
+      print('getConversationMessages error: $e');
+      return [];
+    }
+  }
+
+  // ── WebSocket ─────────────────────────────────────────────────────────────
+
+  static const String _wsBaseUrl = 'wss://mediora-back-2.onrender.com';
+  WebSocketChannel? _channel;
+
+  // Connect to WebSocket
+  Future<WebSocketChannel?> connectToChat() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? accessToken = prefs.getString('access_token');
+
+      if (accessToken == null) {
+        print('WebSocket: no access token');
+        return null;
+      }
+
+      _channel = WebSocketChannel.connect(
+        Uri.parse('$_wsBaseUrl/chat/ws?token=$accessToken'),
+      );
+
+      print('WebSocket: connected');
+      return _channel;
+    } catch (e) {
+      print('WebSocket connect error: $e');
+      return null;
+    }
+  }
+
+  // Disconnect from WebSocket
+  void disconnectChat() {
+    _channel?.sink.close(status.goingAway);
+    _channel = null;
+    print('WebSocket: disconnected');
+  }
+
+  // Send a text message
+  void sendMessage({required String conversationId, required String message}) {
+    if (_channel == null) {
+      print('WebSocket: not connected');
+      return;
+    }
+    final payload = jsonEncode({
+      'type': 'message',
+      'conversation_id': conversationId,
+      'message': message,
+    });
+    _channel!.sink.add(payload);
+    print('WebSocket sendMessage: $payload');
+  }
+
+  // Send typing indicator
+  void sendTyping({required String conversationId}) {
+    if (_channel == null) return;
+    final payload = jsonEncode({
+      'type': 'typing',
+      'conversation_id': conversationId,
+    });
+    _channel!.sink.add(payload);
+  }
+
+  // Send read receipt
+  void sendReadReceipt({
+    required String conversationId,
+    required String messageId,
+  }) {
+    if (_channel == null) return;
+    final payload = jsonEncode({
+      'type': 'read',
+      'conversation_id': conversationId,
+      'message': messageId,
+    });
+    _channel!.sink.add(payload);
+  }
+
+  // Stream of incoming messages
+  Stream? get messageStream => _channel?.stream;
+}

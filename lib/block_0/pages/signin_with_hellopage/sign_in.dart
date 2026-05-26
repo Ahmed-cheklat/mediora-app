@@ -161,8 +161,15 @@ class _SignInState extends State<SignIn> {
                   20.verticalSpace,
                   SignInWithGoogleButton(
                     function: () async {
-                      final result = await AuthService().signInWithGoogle();
-                      if (!result.success) {
+                      final result = await AuthService().googleSignIn();
+                      if (result.success) {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const   Homepage(),
+                          ),
+                        );
+                      } else {
                         CustomSnackBarForSignIn.show(
                           context,
                           message: result.message,

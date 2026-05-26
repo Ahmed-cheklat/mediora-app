@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mediora/advices.dart';
+import 'package:mediora/block_1/tools/appointement_card.dart';
+import 'package:mediora/block_3/pages/chat_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mediora/Network/networkServices.dart';
 import 'package:mediora/block_2/pages/specialites_page.dart';
-import 'package:mediora/block_3/pages/consult_page.dart';
+import 'package:mediora/block_3/pages/conversations_page.dart';
 import 'package:mediora/block_4/pages/edit_profile_page.dart';
 import 'package:mediora/block_4/pages/profile_page.dart';
 import 'package:mediora/block_4/tools/notifications.dart';
@@ -28,7 +30,7 @@ class _HomepageState extends State<Homepage> {
   final List<Widget> _pages = [
     const HomepageBody(),
     const AppointmentPage(),
-    const ConsultPage(),
+    const ConversationsPage(),
     const ProfilePage(),
   ];
 
@@ -196,11 +198,11 @@ class _HomepageBodyState extends State<HomepageBody> {
   List<dynamic> _appointments = [];
   bool _isLoading = true;
   String _dailyAdvice = '';
+
   @override
   void initState() {
     super.initState();
     _loadDailyAdvice();
-
     _loadData();
   }
 
@@ -211,14 +213,10 @@ class _HomepageBodyState extends State<HomepageBody> {
   Future<void> _loadDailyAdvice() async {
     final prefs = await SharedPreferences.getInstance();
     final currentSession = DateTime.now().millisecondsSinceEpoch.toString();
-
-    // Always pick new advice on every app session (initState = new session)
     final random = Random();
     final advice = medicalAdvices[random.nextInt(medicalAdvices.length)];
-
     await prefs.setString('daily_advice', advice);
     await prefs.setString('advice_session_id', currentSession);
-
     if (mounted) setState(() => _dailyAdvice = advice);
   }
 
@@ -236,7 +234,6 @@ class _HomepageBodyState extends State<HomepageBody> {
       final prefs = await SharedPreferences.getInstance();
       final appointmentNotifEnabled =
           prefs.getBool('notif_appointment') ?? false;
-
       if (!appointmentNotifEnabled) return;
 
       final noti = NotiService();
@@ -248,7 +245,6 @@ class _HomepageBodyState extends State<HomepageBody> {
         final dateStr = ap['date']?.toString() ?? '';
         final doctor = ap['doctor'] as Map<String, dynamic>? ?? {};
         final doctorName = doctor['first_name']?.toString() ?? 'your doctor';
-
         final appointmentDate = DateTime.tryParse(dateStr);
         if (appointmentDate == null) continue;
 
@@ -266,7 +262,7 @@ class _HomepageBodyState extends State<HomepageBody> {
           20,
           0,
         );
-  
+
         if (appointmentNotifEnabled && morningNotif.isAfter(now)) {
           await noti.scheduleNotificationAtDate(
             id: i * 10,
@@ -275,7 +271,6 @@ class _HomepageBodyState extends State<HomepageBody> {
             dateTime: morningNotif,
           );
         }
-
         if (appointmentNotifEnabled && reminderNotif.isAfter(now)) {
           await noti.scheduleNotificationAtDate(
             id: i * 10 + 1,
@@ -337,6 +332,30 @@ class _HomepageBodyState extends State<HomepageBody> {
     }
   }
 
+  void _onMessage(BuildContext context, Map<String, dynamic> appointment) {
+    final doctor = appointment['doctor'] as Map<String, dynamic>? ?? {};
+    final String doctorId = doctor['id']?.toString() ?? '';
+    final String doctorName =
+        '${doctor['first_name'] ?? ''} ${doctor['last_name'] ?? ''}'.trim();
+    final String? avatarUrl = doctor['picture']?.toString();
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ConversationsPage()),
+    );
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatPage(
+          conversationId:null ,
+          doctorId: doctorId,
+          doctorName: doctorName,
+          avatarUrl: avatarUrl,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -358,138 +377,13 @@ class _HomepageBodyState extends State<HomepageBody> {
               style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700),
             ),
             SizedBox(height: 12.h),
-            ..._appointments.map((appointment) {
-              final ap = appointment as Map<String, dynamic>;
-              final doctor = ap['doctor'] as Map<String, dynamic>? ?? {};
-              final String doctorName =
-                  doctor['first_name']?.toString() ?? 'Unknown Doctor';
-              final String specialty = doctor['specialty']?.toString() ?? '';
-              final String? pictureUrl = doctor['picture']?.toString();
-              final String date = ap['date']?.toString() ?? '';
-              final String status = ap['status']?.toString() ?? '';
-              final String appointmentId = ap['id']?.toString() ?? '';
-
-              return Container(
-                margin: EdgeInsets.only(bottom: 12.h),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(16.r),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Padding(
-                  padding: EdgeInsets.all(14.w),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 28.r,
-                            backgroundImage:
-                                (pictureUrl != null &&
-                                    pictureUrl.startsWith('http'))
-                                ? NetworkImage(pictureUrl)
-                                : const AssetImage('assets/default_avatar.png')
-                                      as ImageProvider,
-                          ),
-                          SizedBox(width: 12.w),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Dr. $doctorName',
-                                  style: TextStyle(
-                                    fontSize: 15.sp,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                SizedBox(height: 3.h),
-                                Text(
-                                  specialty,
-                                  style: TextStyle(
-                                    fontSize: 13.sp,
-                                    color: Colors.grey[500],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 10.w,
-                              vertical: 4.h,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF2463EB).withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(20.r),
-                            ),
-                            child: Text(
-                              status,
-                              style: TextStyle(
-                                fontSize: 11.sp,
-                                color: const Color(0xFF2463EB),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 12.h),
-                      Divider(height: 1, color: Colors.grey[200]),
-                      SizedBox(height: 12.h),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.calendar_today_outlined,
-                            size: 16.r,
-                            color: Colors.grey[500],
-                          ),
-                          SizedBox(width: 6.w),
-                          Text(
-                            date,
-                            style: TextStyle(
-                              fontSize: 13.sp,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          const Spacer(),
-                          SizedBox(
-                            height: 34.h,
-                            child: OutlinedButton(
-                              onPressed: () =>
-                                  _cancelAppointment(appointmentId),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.red,
-                                side: const BorderSide(color: Colors.red),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10.r),
-                                ),
-                                padding: EdgeInsets.symmetric(horizontal: 16.w),
-                              ),
-                              child: Text(
-                                'Cancel',
-                                style: TextStyle(
-                                  fontSize: 13.sp,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
+            ..._appointments.map(
+              (appointment) => AppointmentCard(
+                appointment: appointment as Map<String, dynamic>,
+                onCancel: _cancelAppointment,
+                onMessage: _onMessage,
+              ),
+            ),
           ] else ...[
             Center(
               child: Column(
